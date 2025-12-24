@@ -28,7 +28,7 @@ class PauseMenu:
         # 제목 텍스트
         self.title = DirectButton(
             parent=self.menu_frame,
-            text="일시정지",
+            text="PAUSED",
             text_scale=0.15,
             text_pos=(0, 0.2),
             text_fg=(1, 1, 1, 1),
@@ -39,7 +39,7 @@ class PauseMenu:
         # 계속하기 버튼
         self.resume_btn = DirectButton(
             parent=self.menu_frame,
-            text="계속하기",
+            text="RESUME",
             text_scale=0.08,
             text_pos=(0, 0),
             text_fg=(1, 1, 1, 1),
@@ -52,7 +52,7 @@ class PauseMenu:
         # 게임 종료 버튼
         self.quit_btn = DirectButton(
             parent=self.menu_frame,
-            text="게임 종료",
+            text="QUIT",
             text_scale=0.08,
             text_pos=(0, 0),
             text_fg=(1, 1, 1, 1),
@@ -62,7 +62,7 @@ class PauseMenu:
             command=self.quit_callback
         )
 
-        print("[PauseMenu] 일시정지 메뉴 생성 완료")
+        print("[PauseMenu] Pause menu created")
 
     def show(self):
         """메뉴 표시"""

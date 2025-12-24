@@ -118,7 +118,7 @@ class Controls:
         props = WindowProperties()
 
         if self.paused:
-            print("[Game] 일시정지 - ESC로 재개")
+            print("[Game] Paused - Press ESC to resume")
             # 일시정지 메뉴 표시
             self.pause_menu.show()
             # 마우스 커서 표시
@@ -128,7 +128,7 @@ class Controls:
             for key in self.player.moving:
                 self.player.moving[key] = False
         else:
-            print("[Game] 게임 재개")
+            print("[Game] Resumed")
             # 일시정지 메뉴 숨김
             self.pause_menu.hide()
             # 마우스 다시 숨김
@@ -140,7 +140,7 @@ class Controls:
         self.game.win.requestProperties(props)
 
     def _quit_game(self):
-        """게임 종료"""
+        """Quit game"""
         self.game._exit_game()
 
     def update(self):
