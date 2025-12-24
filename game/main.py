@@ -106,38 +106,18 @@ class ArenaPulseGame(ShowBase):
         print("[Game] FPS 카메라 설정 완료")
 
     def _create_crosshair(self):
-        """조준점 UI 생성"""
-        # 십자선 (중앙)
-        self.crosshair_h = OnscreenText(
-            text="-",
+        """Create crosshair UI"""
+        # Crosshair (+)
+        self.crosshair = OnscreenText(
+            text="+",
             pos=(0, 0),
-            scale=0.1,
-            fg=(0, 1, 0, 1),
-            align=TextNode.ACenter,
-            mayChange=False
-        )
-
-        # 세로선을 위한 텍스트
-        self.crosshair_v = OnscreenText(
-            text="|",
-            pos=(0, 0.01),
-            scale=0.08,
-            fg=(0, 1, 0, 1),
-            align=TextNode.ACenter,
-            mayChange=False
-        )
-
-        # 조준점 점
-        self.crosshair_dot = OnscreenText(
-            text=".",
-            pos=(0, -0.01),
             scale=0.15,
             fg=(0, 1, 0, 1),
             align=TextNode.ACenter,
             mayChange=False
         )
 
-        print("[Game] 조준점 UI 생성 완료")
+        print("[Game] Crosshair UI created")
 
     def _update_task(self, task):
         """메인 게임 루프"""
