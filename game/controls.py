@@ -1,4 +1,5 @@
 from panda3d.core import Point3, Vec3, WindowProperties
+from game.pause_menu import PauseMenu
 
 
 class Controls:
@@ -18,6 +19,13 @@ class Controls:
 
         # 마우스 입력 바인딩
         self._setup_mouse()
+
+        # 일시정지 메뉴 생성
+        self.pause_menu = PauseMenu(
+            game,
+            resume_callback=self._toggle_pause,
+            quit_callback=self._quit_game
+        )
 
         print("[Controls] 컨트롤 설정 완료 (FPS 모드)")
 
@@ -111,6 +119,8 @@ class Controls:
 
         if self.paused:
             print("[Game] 일시정지 - ESC로 재개")
+            # 일시정지 메뉴 표시
+            self.pause_menu.show()
             # 마우스 커서 표시
             props.setCursorHidden(False)
             props.setMouseMode(WindowProperties.M_absolute)
@@ -119,6 +129,8 @@ class Controls:
                 self.player.moving[key] = False
         else:
             print("[Game] 게임 재개")
+            # 일시정지 메뉴 숨김
+            self.pause_menu.hide()
             # 마우스 다시 숨김
             props.setCursorHidden(True)
             props.setMouseMode(WindowProperties.M_confined)
@@ -126,6 +138,10 @@ class Controls:
             self._center_mouse()
 
         self.game.win.requestProperties(props)
+
+    def _quit_game(self):
+        """게임 종료"""
+        self.game._exit_game()
 
     def update(self):
         """매 프레임 컨트롤 업데이트 (마우스 회전)"""
@@ -163,3 +179,5 @@ class Controls:
         props.setMouseMode(WindowProperties.M_absolute)
         self.game.win.requestProperties(props)
         self.game.ignoreAll()
+        if self.pause_menu:
+            self.pause_menu.cleanup()
