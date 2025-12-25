@@ -75,6 +75,10 @@ class Controls:
         self.game.accept('rshift', self._set_run, [True])
         self.game.accept('rshift-up', self._set_run, [False])
 
+        # 재장전 (R)
+        self.game.accept('raw-r', self._reload)
+        self.game.accept('r', self._reload)
+
         # 일시정지 (ESC)
         self.game.accept('escape', self._toggle_pause)
 
@@ -110,6 +114,11 @@ class Controls:
         """달리기 상태 설정"""
         if not self.paused:
             self.player.set_running(running)
+
+    def _reload(self):
+        """재장전"""
+        if not self.paused:
+            self.player._reload()
 
     def _toggle_pause(self):
         """일시정지 토글"""

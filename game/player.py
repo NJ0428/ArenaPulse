@@ -2,6 +2,7 @@ from panda3d.core import Point3, Vec3, BitMask32
 from direct.actor.Actor import Actor
 from direct.interval.IntervalGlobal import Sequence, Func, Wait
 import math
+import random
 
 
 class Player:
@@ -34,14 +35,32 @@ class Player:
 
         # 공격 상태
         self.can_attack = True
-        self.ranged_cooldown = 0.3
         self.melee_cooldown = 0.5
+
+        # 총기 시스템
+        self.gun_fire_rate = 0.15  # 발사 속도 (초)
+        self.gun_damage = 25  # 데미지
+        self.gun_bullet_speed = 100.0  # 탄속
+        self.gun_spread = 2.0  # 정확도 (낮을수록 정확, 단위: 도)
+        self.gun_recoil = 3.0  # 반동 (상하)
+        self.gun_magazine_size = 30  # 탄창 크기
+        self.gun_current_ammo = self.gun_magazine_size  # 현재 탄창
+        self.gun_total_ammo = 300  # 전체 탄약
+        self.gun_reload_time = 2.0  # 재장전 시간
+        self.is_reloading = False  # 재장전 중
+
+        # 반동 시각효과
+        self.recoil_pitch = 0.0  # 현재 반동 각도
+        self.recoil_recovery = 10.0  # 반동 복구 속도
 
         # 플레이어 위치 (보이지 않는 노드)
         self._create_player_node()
 
         # 투사체 리스트
         self.projectiles = []
+
+        # 재장전 텍스트 UI
+        self.reload_text = None
 
     def _create_player_node(self):
         """플레이어 노드 생성 (1인칭이므로 보이지 않음)"""
@@ -66,6 +85,7 @@ class Player:
         self._update_gravity(dt)
         self._update_movement(dt)
         self._update_projectiles(dt)
+        self._update_recoil(dt)  # 반동 복구
 
     def _update_gravity(self, dt):
         """중력 적용"""
@@ -140,46 +160,75 @@ class Player:
         self.speed = self.run_speed if running else self.walk_speed
 
     def ranged_attack(self):
-        """원거리 공격 (투사체 발사)"""
-        if not self.can_attack:
+        """Ranged attack (gun shooting)"""
+        if not self.can_attack or self.is_reloading:
+            return
+
+        # 탄약 체크
+        if self.gun_current_ammo <= 0:
+            self._reload()
             return
 
         self.can_attack = False
+        self.gun_current_ammo -= 1
 
-        # 투사체 생성
-        projectile = self.game.loader.loadModel("models/box")
-        projectile.reparentTo(self.game.render)
-        projectile.setScale(0.2, 0.2, 0.2)
-        projectile.setColor(1.0, 1.0, 0.0, 1.0)  # 노란색
+        # 총알 생성 (길쭉한 모양)
+        bullet = self.game.loader.loadModel("models/box")
+        bullet.reparentTo(self.game.render)
+        bullet.setScale(0.05, 0.2, 0.05)  # 길쭉한 총알 모양
+        bullet.setColor(1.0, 0.8, 0.0, 1.0)  # 금색
 
         # 카메라(눈) 위치에서 발사
         start_pos = self.camera_node.getPos(self.game.render)
-        projectile.setPos(start_pos)
+        bullet.setPos(start_pos)
 
-        # 발사 방향 (카메라가 바라보는 방향)
+        # 기본 발사 방향 (카메라가 바라보는 방향)
         heading_rad = math.radians(self.heading)
         pitch_rad = math.radians(self.pitch)
 
-        direction = Vec3(
+        base_direction = Vec3(
             -math.sin(heading_rad) * math.cos(pitch_rad),
             math.cos(heading_rad) * math.cos(pitch_rad),
             math.sin(pitch_rad)
         )
+        base_direction.normalize()
+
+        # 산탄(spread) 적용 - 정확도에 따른 랜덤 편차
+        spread_rad = math.radians(self.gun_spread)
+        spread_h = (random.random() - 0.5) * 2 * spread_rad  # 좌우 편차
+        spread_v = (random.random() - 0.5) * 2 * spread_rad  # 상하 편차
+
+        # 편차를 방향에 적용
+        cos_h = math.cos(spread_h)
+        sin_h = math.sin(spread_h)
+        cos_v = math.cos(spread_v)
+        sin_v = math.sin(spread_v)
+
+        direction = Vec3(
+            base_direction.x * cos_h - base_direction.y * sin_h,
+            base_direction.x * sin_h + base_direction.y * cos_h,
+            base_direction.z * cos_v + sin_v
+        )
+        direction.normalize()
 
         self.projectiles.append({
-            'node': projectile,
+            'node': bullet,
             'direction': direction,
-            'speed': 50.0,
-            'lifetime': 3.0
+            'speed': self.gun_bullet_speed,
+            'lifetime': 3.0,
+            'damage': self.gun_damage
         })
 
-        print("[Player] 원거리 공격!")
+        # 반동 적용
+        self._apply_recoil()
 
-        # 쿨다운 후 공격 가능
+        print(f"[Player] Shot! Ammo: {self.gun_current_ammo}/{self.gun_magazine_size}")
+
+        # 발사 속도에 따른 쿨다운
         self.game.taskMgr.doMethodLater(
-            self.ranged_cooldown,
+            self.gun_fire_rate,
             self._reset_attack,
-            'reset_attack'
+            'reset_ranged_attack'
         )
 
     def melee_attack(self):
@@ -220,6 +269,61 @@ class Player:
     def _reset_attack(self, task):
         """공격 쿨다운 리셋"""
         self.can_attack = True
+        return None
+
+    def _apply_recoil(self):
+        """반동 적용"""
+        # 상하 반동
+        recoil_amount = self.gun_recoil * (0.5 + random.random() * 0.5)  # 50%~100% 랜덤
+        self.recoil_pitch += recoil_amount
+
+        # 카메라에 즉시 적용
+        self.camera_node.setP(self.pitch + self.recoil_pitch)
+
+    def _update_recoil(self, dt):
+        """반동 복구"""
+        if self.recoil_pitch > 0:
+            # 반동 복구
+            self.recoil_pitch -= self.recoil_recovery * dt
+            if self.recoil_pitch < 0:
+                self.recoil_pitch = 0
+
+            # 카메라에 적용
+            self.camera_node.setP(self.pitch + self.recoil_pitch)
+
+    def _reload(self):
+        """재장전"""
+        if self.is_reloading or self.gun_total_ammo <= 0:
+            return
+
+        if self.gun_current_ammo >= self.gun_magazine_size:
+            return  # 이미 탄창이 가득 찼음
+
+        self.is_reloading = True
+        self.can_attack = False
+
+        print(f"[Player] Reloading... ({self.gun_reload_time}s)")
+
+        # 재장전 완료 후 탄약 채우기
+        self.game.taskMgr.doMethodLater(
+            self.gun_reload_time,
+            self._finish_reload,
+            'reload_weapon'
+        )
+
+    def _finish_reload(self, task):
+        """재장전 완료"""
+        ammo_needed = self.gun_magazine_size - self.gun_current_ammo
+        ammo_to_add = min(ammo_needed, self.gun_total_ammo)
+
+        self.gun_current_ammo += ammo_to_add
+        self.gun_total_ammo -= ammo_to_add
+
+        self.is_reloading = False
+        self.can_attack = True
+
+        print(f"[Player] Reloaded! Ammo: {self.gun_current_ammo}/{self.gun_magazine_size}")
+
         return None
 
     def _update_projectiles(self, dt):

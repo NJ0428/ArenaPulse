@@ -55,8 +55,8 @@ class ArenaPulseGame(ShowBase):
         # 메인 업데이트 태스크
         self.taskMgr.add(self._update_task, "UpdateTask")
 
-        print("[Game] ArenaPulse 게임 시작! (DOOM 스타일 FPS)")
-        print("[Game] WASD: 이동 | 마우스: 조준 | 좌클릭: 원거리 | 우클릭/Space: 근접 | ESC: 일시정지")
+        print("[Game] ArenaPulse game started! (DOOM style FPS)")
+        print("[Game] WASD: Move | Mouse: Aim | L-Click: Shoot | R-Click/Space: Melee | R: Reload | ESC: Pause")
 
     def _setup_window(self):
         """창 설정"""
