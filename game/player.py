@@ -12,7 +12,7 @@ class Player:
         self.run_speed = 25.0
         self.speed = self.walk_speed
         self.is_running = False
-        self.eye_height = 1.7  # 눈 높이
+        self.eye_height = 2.5  # 눈 높이
 
         # 중력 관련
         self.gravity = -30.0  # 중력 가속도

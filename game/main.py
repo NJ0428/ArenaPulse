@@ -10,7 +10,9 @@ from panda3d.core import (
     Vec4,
     TransparencyAttrib,
     CardMaker,
-    TextNode
+    TextNode,
+    Texture,
+    TextureStage
 )
 import sys
 import os
@@ -88,15 +90,36 @@ class ArenaPulseGame(ShowBase):
         print("[Game] 조명 설정 완료")
 
     def _create_scene(self):
-        """기본 씬 생성 - 회색 타일 바닥"""
-        # 회색 타일 바닥 생성
+        """기본 씬 생성 - 흰색 돌 질감 바닥"""
+        # 흰색 돌 질감 바닥 생성
         self.floor = self.loader.loadModel("models/box")
         self.floor.reparentTo(self.render)
         self.floor.setScale(100, 100, 0.1)
         self.floor.setPos(0, 0, -0.1)
-        self.floor.setColor(0.5, 0.5, 0.5, 1.0)  # 회색
 
-        print("[Game] 씬 생성 완료 (회색 바닥)")
+        # 바닥 색상을 흰색으로 설정
+        self.floor.setColor(0.95, 0.95, 0.95, 1.0)  # 흰색
+
+        # 돌 질감 텍스처 로드 시도
+        stone_texture = self.loader.loadTexture("textures/stone.png")
+        if stone_texture:
+            # 텍스처 반복 설정
+            stone_texture.setWrapU(Texture.WMRepeat)
+            stone_texture.setWrapV(Texture.WMRepeat)
+
+            # 텍스처 스테이지 생성 및 반복 설정
+            ts = TextureStage('ts')
+            ts.setMode(TextureStage.MReplace)
+
+            # 텍스처를 20x20으로 반복
+            self.floor.setTexture(ts, stone_texture)
+            self.floor.setTexScale(ts, 20, 20)
+
+            print("[Game] 돌 질감 텍스처 적용 완료 (20x20 타일링)")
+        else:
+            print("[Game] 텍스처 로드 실패 (textures/stone.png), 기본 흰색 바닥 사용")
+
+        print("[Game] 씬 생성 완료 (흰색 바닥)")
 
     def _setup_fps_camera(self):
         """FPS 카메라 설정"""
