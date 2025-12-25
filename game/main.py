@@ -12,7 +12,8 @@ from panda3d.core import (
     CardMaker,
     TextNode,
     Texture,
-    TextureStage
+    TextureStage,
+    ColorAttrib
 )
 import sys
 import os
@@ -91,35 +92,31 @@ class ArenaPulseGame(ShowBase):
 
     def _create_scene(self):
         """기본 씬 생성 - 흰색 돌 질감 바닥"""
-        # 흰색 돌 질감 바닥 생성
-        self.floor = self.loader.loadModel("models/box")
-        self.floor.reparentTo(self.render)
-        self.floor.setScale(100, 100, 0.1)
+        # CardMaker로 바닥 평면 생성 (정점 색상 문제 해결)
+        cm = CardMaker('floor')
+        cm.setFrame(-100, 100, -100, 100)  # 200x200 크기
+        self.floor = self.render.attachNewNode(cm.generate())
+
+        # 바닥을 수평으로 회전
+        self.floor.setP(-90)
         self.floor.setPos(0, 0, -0.1)
 
-        # 바닥 색상을 흰색으로 설정
-        self.floor.setColor(0.95, 0.95, 0.95, 1.0)  # 흰색
-
-        # 돌 질감 텍스처 로드 시도
+        # 돌 질감 텍스처 로드
         stone_texture = self.loader.loadTexture("textures/stone.png")
         if stone_texture:
             # 텍스처 반복 설정
             stone_texture.setWrapU(Texture.WMRepeat)
             stone_texture.setWrapV(Texture.WMRepeat)
 
-            # 텍스처 스테이지 생성 및 반복 설정
-            ts = TextureStage('ts')
-            ts.setMode(TextureStage.MReplace)
-
-            # 텍스처를 20x20으로 반복
-            self.floor.setTexture(ts, stone_texture)
-            self.floor.setTexScale(ts, 20, 20)
+            # 텍스처 적용
+            self.floor.setTexture(stone_texture)
+            self.floor.setTexScale(TextureStage.getDefault(), 20, 20)
 
             print("[Game] 돌 질감 텍스처 적용 완료 (20x20 타일링)")
         else:
-            print("[Game] 텍스처 로드 실패 (textures/stone.png), 기본 흰색 바닥 사용")
+            print("[Game] 텍스처 로드 실패 (textures/stone.png)")
 
-        print("[Game] 씬 생성 완료 (흰색 바닥)")
+        print("[Game] 씬 생성 완료 (돌 질감 바닥)")
 
     def _setup_fps_camera(self):
         """FPS 카메라 설정"""
