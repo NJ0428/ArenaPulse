@@ -43,6 +43,9 @@ class ArenaPulseGame(ShowBase):
         # 기본 씬 생성
         self._create_scene()
 
+        # 구름 생성
+        self._create_clouds()
+
         # 플레이어 생성
         self.player = Player(self)
 
@@ -118,6 +121,54 @@ class ArenaPulseGame(ShowBase):
 
         print("[Game] 씬 생성 완료 (돌 질감 바닥)")
 
+    def _create_clouds(self):
+        """하늘에 구름 생성"""
+        self.clouds = []
+
+        # 구름 텍스처 로드
+        cloud_texture = self.loader.loadTexture("textures/cloud.png")
+
+        if cloud_texture:
+            # 여러 개의 구름 생성
+            cloud_positions = [
+                (-50, -80, 40, 15),
+                (30, -90, 50, 18),
+                (70, -70, 35, 12),
+                (-30, -60, 45, 20),
+                (60, -85, 55, 16),
+                (0, -100, 38, 14),
+                (-70, -75, 48, 17),
+                (40, -65, 42, 13),
+            ]
+
+            for x, y, z, scale in cloud_positions:
+                # CardMaker로 구름 평면 생성
+                cm = CardMaker(f'cloud_{len(self.clouds)}')
+                cm.setFrame(-scale, scale, -scale * 0.6, scale * 0.6)
+                cloud = self.render.attachNewNode(cm.generate())
+
+                # 위치 설정
+                cloud.setPos(x, y, z)
+
+                # 항상 카메라를 향하도록 (Billboarding)
+                cloud.setBillboardPointEye()
+
+                # 투명도 설정
+                cloud.setTransparency(TransparencyAttrib.MAlpha)
+
+                # 텍스처 적용
+                cloud.setTexture(cloud_texture)
+
+                self.clouds.append({
+                    'node': cloud,
+                    'speed': 0.5 + (len(self.clouds) * 0.1),  # 각기 다른 속도
+                    'original_y': y
+                })
+
+            print(f"[Game] 구름 {len(self.clouds)}개 생성 완료")
+        else:
+            print("[Game] 구름 텍스처 로드 실패 (textures/cloud.png)")
+
     def _setup_fps_camera(self):
         """FPS 카메라 설정"""
         self.disableMouse()
@@ -146,8 +197,19 @@ class ArenaPulseGame(ShowBase):
         if not self.controls.is_paused():
             self.player.update(dt)
             self.controls.update()
+            self._update_clouds(dt)
 
         return Task.cont
+
+    def _update_clouds(self, dt):
+        """구름 움직임 업데이트"""
+        for cloud in self.clouds:
+            # 구름을 천천히 이동
+            cloud['node'].setY(cloud['node'].getY() + cloud['speed'] * dt)
+
+            # 너무 멀어지면 반대편으로 이동
+            if cloud['node'].getY() > 50:
+                cloud['node'].setY(cloud['original_y'])
 
     def _exit_game(self):
         """게임 종료"""

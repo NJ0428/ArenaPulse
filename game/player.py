@@ -1,4 +1,4 @@
-from panda3d.core import Point3, Vec3, BitMask32
+from panda3d.core import Point3, Vec3, BitMask32, Texture, TransparencyAttrib, ColorAttrib
 from direct.actor.Actor import Actor
 from direct.interval.IntervalGlobal import Sequence, Func, Wait
 import math
@@ -40,7 +40,7 @@ class Player:
         # 총기 시스템
         self.gun_fire_rate = 0.15  # 발사 속도 (초)
         self.gun_damage = 25  # 데미지
-        self.gun_bullet_speed = 100.0  # 탄속
+        self.gun_bullet_speed = 20.0  # 탄속 (임시로 느리게)
         self.gun_spread = 2.0  # 정확도 (낮을수록 정확, 단위: 도)
         self.gun_recoil = 3.0  # 반동 (상하)
         self.gun_magazine_size = 30  # 탄창 크기
@@ -172,11 +172,26 @@ class Player:
         self.can_attack = False
         self.gun_current_ammo -= 1
 
-        # 총알 생성 (길쭉한 모양)
-        bullet = self.game.loader.loadModel("models/box")
-        bullet.reparentTo(self.game.render)
-        bullet.setScale(0.05, 0.2, 0.05)  # 길쭉한 총알 모양
-        bullet.setColor(1.0, 0.8, 0.0, 1.0)  # 금색
+        # 총알 생성 (카드 메이커로 평면 생성)
+        from panda3d.core import CardMaker
+        cm = CardMaker('bullet')
+        cm.setFrame(-0.3, 0.3, -0.15, 0.15)  # 총알 크기
+        bullet = self.game.render.attachNewNode(cm.generate())
+
+        # 항상 카메라를 향하도록 (Billboarding)
+        bullet.setBillboardPointEye()
+
+        # 투명도 설정
+        bullet.setTransparency(TransparencyAttrib.MAlpha)
+
+        # 총알 텍스처 적용
+        bullet_texture = self.game.loader.loadTexture("textures/bullet.png")
+        if bullet_texture:
+            bullet.setTexture(bullet_texture)
+            print("[Player] 총알 텍스처 적용 완료")
+        else:
+            bullet.setColor(1.0, 0.8, 0.0, 1.0)  # 금색 (텍스처 없을 때)
+            print("[Player] 총알 텍스처 로드 실패 - 기본 색상 사용")
 
         # 카메라(눈) 위치에서 발사
         start_pos = self.camera_node.getPos(self.game.render)
