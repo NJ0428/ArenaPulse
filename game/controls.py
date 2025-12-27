@@ -87,8 +87,8 @@ class Controls:
         # 좌클릭 - 원거리 공격
         self.game.accept('mouse1', self._ranged_attack)
 
-        # 우클릭 - 근접 공격
-        self.game.accept('mouse3', self._melee_attack)
+        # 우클릭 - 줌
+        self.game.accept('mouse3', self._toggle_zoom)
 
     def _set_move(self, direction, value):
         """이동 상태 설정"""
@@ -100,10 +100,10 @@ class Controls:
         if not self.paused:
             self.player.ranged_attack()
 
-    def _melee_attack(self):
-        """근접 공격"""
+    def _toggle_zoom(self):
+        """줌 토글"""
         if not self.paused:
-            self.player.melee_attack()
+            self.player.toggle_zoom()
 
     def _jump(self):
         """점프"""

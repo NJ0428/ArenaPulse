@@ -61,11 +61,14 @@ class ArenaPulseGame(ShowBase):
         # 총알 UI 생성
         self._create_ammo_ui()
 
+        # 총기 이미지 UI 생성
+        self._create_gun_ui()
+
         # 메인 업데이트 태스크
         self.taskMgr.add(self._update_task, "UpdateTask")
 
         print("[Game] ArenaPulse game started! (DOOM style FPS)")
-        print("[Game] WASD: Move | Mouse: Aim | L-Click: Shoot | R-Click/Space: Melee | R: Reload | ESC: Pause")
+        print("[Game] WASD: Move | Mouse: Aim | L-Click: Shoot | R-Click: Zoom | Space: Jump | R: Reload | ESC: Pause")
 
     def _setup_window(self):
         """창 설정"""
@@ -237,6 +240,36 @@ class ArenaPulseGame(ShowBase):
         total_ammo = self.player.gun_total_ammo
 
         self.ammo_text.setText(f"{current_ammo} / {magazine_size}  ({total_ammo})")
+
+    def _create_gun_ui(self):
+        """총기 이미지 UI 생성"""
+        # 기본 총기 이미지
+        self.gun_image = OnscreenImage(
+            image='textures/basicGun.png',
+            pos=(0.7, 0, -0.6),
+            scale=(0.5, 1, 0.3)
+        )
+        self.gun_image.setTransparency(TransparencyAttrib.MAlpha)
+
+        # 줌 상태 총기 이미지 (숨김 상태로 시작)
+        self.gun_zoom_image = OnscreenImage(
+            image='textures/basicGun2.png',
+            pos=(0, 0, -0.4),
+            scale=(0.8, 1, 0.4)
+        )
+        self.gun_zoom_image.setTransparency(TransparencyAttrib.MAlpha)
+        self.gun_zoom_image.hide()
+
+        print("[Game] Gun UI created")
+
+    def update_gun_ui(self, is_zoomed):
+        """줌 상태에 따른 총기 이미지 변경"""
+        if is_zoomed:
+            self.gun_image.hide()
+            self.gun_zoom_image.show()
+        else:
+            self.gun_image.show()
+            self.gun_zoom_image.hide()
 
     def _exit_game(self):
         """게임 종료"""

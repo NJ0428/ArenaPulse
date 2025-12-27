@@ -35,7 +35,6 @@ class Player:
 
         # 공격 상태
         self.can_attack = True
-        self.melee_cooldown = 0.5
 
         # 총기 시스템
         self.gun_fire_rate = 0.15  # 발사 속도 (초)
@@ -48,6 +47,11 @@ class Player:
         self.gun_total_ammo = 300  # 전체 탄약
         self.gun_reload_time = 2.0  # 재장전 시간
         self.is_reloading = False  # 재장전 중
+
+        # 줌 시스템
+        self.is_zoomed = False  # 줌 상태
+        self.zoom_fov_reduction = 0.5  # 줌 시 FOV 감소 비율
+        self.gun_recoil_zoom_multiplier = 0.4  # 줌 시 반동 감소 비율 (40%만 적용)
 
         # 반동 시각효과
         self.recoil_pitch = 0.0  # 현재 반동 각도
@@ -246,40 +250,23 @@ class Player:
             'reset_ranged_attack'
         )
 
-    def melee_attack(self):
-        """근접 공격"""
-        if not self.can_attack:
-            return
+    def toggle_zoom(self):
+        """줌 토글"""
+        self.is_zoomed = not self.is_zoomed
 
-        self.can_attack = False
+        # FOV 변경 (렌즈 객체 사용)
+        lens = self.game.camLens
+        if self.is_zoomed:
+            # 줌 상태: FOV 감소
+            lens.setFov(lens.getFov() * self.zoom_fov_reduction)
+        else:
+            # 일반 상태: FOV 복구
+            lens.setFov(lens.getFov() / self.zoom_fov_reduction)
 
-        # 근접 공격 이펙트 (앞에 히트박스 표시)
-        melee_hitbox = self.game.loader.loadModel("models/box")
-        melee_hitbox.reparentTo(self.camera_node)
-        melee_hitbox.setScale(0.5, 2.0, 0.5)
-        melee_hitbox.setPos(0, 2.5, -0.3)
-        melee_hitbox.setColor(1.0, 0.3, 0.3, 0.7)
+        # 총기 UI 업데이트
+        self.game.update_gun_ui(self.is_zoomed)
 
-        print("[Player] 근접 공격!")
-
-        # 0.2초 후 히트박스 제거
-        self.game.taskMgr.doMethodLater(
-            0.2,
-            lambda task: self._remove_melee_hitbox(melee_hitbox),
-            'remove_melee'
-        )
-
-        # 쿨다운 후 공격 가능
-        self.game.taskMgr.doMethodLater(
-            self.melee_cooldown,
-            self._reset_attack,
-            'reset_attack'
-        )
-
-    def _remove_melee_hitbox(self, hitbox):
-        """근접 공격 히트박스 제거"""
-        hitbox.removeNode()
-        return None
+        print(f"[Player] Zoom {'ON' if self.is_zoomed else 'OFF'}")
 
     def _reset_attack(self, task):
         """공격 쿨다운 리셋"""
@@ -288,8 +275,11 @@ class Player:
 
     def _apply_recoil(self):
         """반동 적용"""
+        # 줌 상태에서는 반동이 감소
+        recoil_multiplier = self.gun_recoil_zoom_multiplier if self.is_zoomed else 1.0
+
         # 상하 반동
-        recoil_amount = self.gun_recoil * (0.5 + random.random() * 0.5)  # 50%~100% 랜덤
+        recoil_amount = self.gun_recoil * recoil_multiplier * (0.5 + random.random() * 0.5)  # 50%~100% 랜덤
         self.recoil_pitch += recoil_amount
 
         # 카메라에 즉시 적용
