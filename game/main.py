@@ -58,6 +58,9 @@ class ArenaPulseGame(ShowBase):
         # 조준점 UI 생성
         self._create_crosshair()
 
+        # 총알 UI 생성
+        self._create_ammo_ui()
+
         # 메인 업데이트 태스크
         self.taskMgr.add(self._update_task, "UpdateTask")
 
@@ -190,6 +193,19 @@ class ArenaPulseGame(ShowBase):
 
         print("[Game] Crosshair UI created")
 
+    def _create_ammo_ui(self):
+        """총알 UI 생성"""
+        self.ammo_text = OnscreenText(
+            text="",
+            pos=(0, -0.85),
+            scale=0.1,
+            fg=(1, 1, 1, 1),
+            align=TextNode.ACenter,
+            mayChange=True
+        )
+
+        print("[Game] Ammo UI created")
+
     def _update_task(self, task):
         """메인 게임 루프"""
         dt = globalClock.getDt()
@@ -198,6 +214,9 @@ class ArenaPulseGame(ShowBase):
             self.player.update(dt)
             self.controls.update()
             self._update_clouds(dt)
+
+        # 총알 UI 업데이트
+        self._update_ammo_ui()
 
         return Task.cont
 
@@ -210,6 +229,14 @@ class ArenaPulseGame(ShowBase):
             # 너무 멀어지면 반대편으로 이동
             if cloud['node'].getY() > 50:
                 cloud['node'].setY(cloud['original_y'])
+
+    def _update_ammo_ui(self):
+        """총알 UI 업데이트"""
+        current_ammo = self.player.gun_current_ammo
+        magazine_size = self.player.gun_magazine_size
+        total_ammo = self.player.gun_total_ammo
+
+        self.ammo_text.setText(f"{current_ammo} / {magazine_size}  ({total_ammo})")
 
     def _exit_game(self):
         """게임 종료"""

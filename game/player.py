@@ -40,7 +40,7 @@ class Player:
         # 총기 시스템
         self.gun_fire_rate = 0.15  # 발사 속도 (초)
         self.gun_damage = 25  # 데미지
-        self.gun_bullet_speed = 20.0  # 탄속 (임시로 느리게)
+        self.gun_bullet_speed = 100.0  # 탄속
         self.gun_spread = 2.0  # 정확도 (낮을수록 정확, 단위: 도)
         self.gun_recoil = 3.0  # 반동 (상하)
         self.gun_magazine_size = 30  # 탄창 크기
