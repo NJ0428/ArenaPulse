@@ -34,13 +34,14 @@ class Player:
         }
 
         # 공격 상태
-        self.can_attack = True
+        self.is_firing = False  # 마우스 버튼 누름 상태 (연발용)
+        self.fire_cooldown = 0.0  # 발사 쿨다운 타이머
 
         # 총기 시스템
         self.gun_fire_rate = 0.15  # 발사 속도 (초)
         self.gun_damage = 25  # 데미지
         self.gun_bullet_speed = 100.0  # 탄속
-        self.gun_spread = 2.0  # 정확도 (낮을수록 정확, 단위: 도)
+        self.gun_spread = 0.5  # 정확도 (낮을수록 정확, 단위: 도)
         self.gun_recoil = 3.0  # 반동 (상하)
         self.gun_magazine_size = 30  # 탄창 크기
         self.gun_current_ammo = self.gun_magazine_size  # 현재 탄창
@@ -90,6 +91,7 @@ class Player:
         self._update_movement(dt)
         self._update_projectiles(dt)
         self._update_recoil(dt)  # 반동 복구
+        self._update_firing(dt)  # 연발 처리
 
     def _update_gravity(self, dt):
         """중력 적용"""
@@ -165,7 +167,7 @@ class Player:
 
     def ranged_attack(self):
         """Ranged attack (gun shooting)"""
-        if not self.can_attack or self.is_reloading:
+        if self.is_reloading:
             return
 
         # 탄약 체크
@@ -173,8 +175,12 @@ class Player:
             self._reload()
             return
 
-        self.can_attack = False
+        # 쿨다운 체크
+        if self.fire_cooldown > 0:
+            return
+
         self.gun_current_ammo -= 1
+        self.fire_cooldown = self.gun_fire_rate  # 쿨다운 설정
 
         # 총알 생성 (카드 메이커로 평면 생성)
         from panda3d.core import CardMaker
@@ -243,12 +249,23 @@ class Player:
 
         print(f"[Player] Shot! Ammo: {self.gun_current_ammo}/{self.gun_magazine_size}")
 
-        # 발사 속도에 따른 쿨다운
-        self.game.taskMgr.doMethodLater(
-            self.gun_fire_rate,
-            self._reset_attack,
-            'reset_ranged_attack'
-        )
+    def start_firing(self):
+        """발사 시작 (마우스 버튼 다운)"""
+        self.is_firing = True
+
+    def stop_firing(self):
+        """발사 중지 (마우스 버튼 업)"""
+        self.is_firing = False
+
+    def _update_firing(self, dt):
+        """연발 처리 (매 프레임)"""
+        # 쿨다운 감소
+        if self.fire_cooldown > 0:
+            self.fire_cooldown -= dt
+
+        # 발사 버튼이 눌려있으면 자동 발사
+        if self.is_firing:
+            self.ranged_attack()
 
     def toggle_zoom(self):
         """줌 토글"""
@@ -267,11 +284,6 @@ class Player:
         self.game.update_gun_ui(self.is_zoomed)
 
         print(f"[Player] Zoom {'ON' if self.is_zoomed else 'OFF'}")
-
-    def _reset_attack(self, task):
-        """공격 쿨다운 리셋"""
-        self.can_attack = True
-        return None
 
     def _apply_recoil(self):
         """반동 적용"""
@@ -305,7 +317,6 @@ class Player:
             return  # 이미 탄창이 가득 찼음
 
         self.is_reloading = True
-        self.can_attack = False
 
         print(f"[Player] Reloading... ({self.gun_reload_time}s)")
 
@@ -325,7 +336,6 @@ class Player:
         self.gun_total_ammo -= ammo_to_add
 
         self.is_reloading = False
-        self.can_attack = True
 
         print(f"[Player] Reloaded! Ammo: {self.gun_current_ammo}/{self.gun_magazine_size}")
 

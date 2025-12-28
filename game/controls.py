@@ -84,8 +84,11 @@ class Controls:
 
     def _setup_mouse(self):
         """마우스 입력 설정"""
-        # 좌클릭 - 원거리 공격
-        self.game.accept('mouse1', self._ranged_attack)
+        # 좌클릭 다운 - 발사 시작
+        self.game.accept('mouse1', self._start_firing)
+
+        # 좌클릭 업 - 발사 중지
+        self.game.accept('mouse1-up', self._stop_firing)
 
         # 우클릭 - 줌
         self.game.accept('mouse3', self._toggle_zoom)
@@ -95,10 +98,15 @@ class Controls:
         if not self.paused:
             self.player.moving[direction] = value
 
-    def _ranged_attack(self):
-        """원거리 공격"""
+    def _start_firing(self):
+        """발사 시작"""
         if not self.paused:
-            self.player.ranged_attack()
+            self.player.start_firing()
+
+    def _stop_firing(self):
+        """발사 중지"""
+        if not self.paused:
+            self.player.stop_firing()
 
     def _toggle_zoom(self):
         """줌 토글"""
