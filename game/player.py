@@ -297,6 +297,13 @@ class Player:
         # 카메라에 즉시 적용
         self.camera_node.setP(self.pitch + self.recoil_pitch)
 
+        # 조준선 흔들림 효과 (랜덤 방향)
+        recoil_spread = 0.015 * recoil_multiplier  # 조준선 흔들림 크기
+        offset_x = (random.random() - 0.5) * 2 * recoil_spread  # -spread ~ +spread
+        offset_y = (random.random() - 0.5) * 2 * recoil_spread * 0.5  # 상하는 덜 흔들림
+        self.game.crosshair_offset[0] += offset_x
+        self.game.crosshair_offset[1] += offset_y
+
     def _update_recoil(self, dt):
         """반동 복구"""
         if self.recoil_pitch > 0:

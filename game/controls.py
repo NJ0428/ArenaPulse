@@ -82,6 +82,10 @@ class Controls:
         # 일시정지 (ESC)
         self.game.accept('escape', self._toggle_pause)
 
+        # 채팅 (Enter)
+        self.game.accept('enter', self._toggle_chat)
+        self.game.accept('return', self._toggle_chat)  # 키패드 Enter도 지원
+
     def _setup_mouse(self):
         """마우스 입력 설정"""
         # 좌클릭 다운 - 발사 시작
@@ -127,6 +131,12 @@ class Controls:
         """재장전"""
         if not self.paused:
             self.player._reload()
+
+    def _toggle_chat(self):
+        """채팅 토글"""
+        # 일시정지 상태가 아닐 때만 채팅 토글
+        if not self.paused:
+            self.game.chat.toggle_chat()
 
     def _toggle_pause(self):
         """일시정지 토글"""
