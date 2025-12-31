@@ -25,6 +25,7 @@ from game.config import SCREEN_WIDTH, SCREEN_HEIGHT, WINDOW_TITLE
 from game.database import Database
 from game.player import Player
 from game.controls import Controls
+from game.chat import ChatSystem
 
 
 class ArenaPulseGame(ShowBase):
@@ -63,6 +64,9 @@ class ArenaPulseGame(ShowBase):
 
         # 총기 이미지 UI 생성
         self._create_gun_ui()
+
+        # 채팅 시스템 생성
+        self.chat = ChatSystem(self)
 
         # 메인 업데이트 태스크
         self.taskMgr.add(self._update_task, "UpdateTask")
@@ -191,8 +195,12 @@ class ArenaPulseGame(ShowBase):
             scale=0.15,
             fg=(0, 1, 0, 1),
             align=TextNode.ACenter,
-            mayChange=False
+            mayChange=True  # 반동 효과를 위해 위치 변경 가능
         )
+
+        # 조준선 반동 오프셋
+        self.crosshair_offset = [0.0, 0.0]  # [x, y]
+        self.crosshair_recoil_recovery = 8.0  # 반동 복구 속도
 
         print("[Game] Crosshair UI created")
 
@@ -213,13 +221,16 @@ class ArenaPulseGame(ShowBase):
         """메인 게임 루프"""
         dt = globalClock.getDt()
 
-        if not self.controls.is_paused():
+        if not self.controls.is_paused() and not self.chat.is_open():
             self.player.update(dt)
             self.controls.update()
             self._update_clouds(dt)
 
         # 총알 UI 업데이트
         self._update_ammo_ui()
+
+        # 조준선 반동 복구
+        self._update_crosshair_recoil(dt)
 
         return Task.cont
 
@@ -240,6 +251,31 @@ class ArenaPulseGame(ShowBase):
         total_ammo = self.player.gun_total_ammo
 
         self.ammo_text.setText(f"{current_ammo} / {magazine_size}  ({total_ammo})")
+
+    def _update_crosshair_recoil(self, dt):
+        """조준선 반동 복구"""
+        # 오프셋 감소 (복구)
+        if self.crosshair_offset[0] != 0 or self.crosshair_offset[1] != 0:
+            recovery_amount = self.crosshair_recoil_recovery * dt
+
+            # X 오프셋 복구
+            if abs(self.crosshair_offset[0]) < recovery_amount:
+                self.crosshair_offset[0] = 0
+            elif self.crosshair_offset[0] > 0:
+                self.crosshair_offset[0] -= recovery_amount
+            else:
+                self.crosshair_offset[0] += recovery_amount
+
+            # Y 오프셋 복구
+            if abs(self.crosshair_offset[1]) < recovery_amount:
+                self.crosshair_offset[1] = 0
+            elif self.crosshair_offset[1] > 0:
+                self.crosshair_offset[1] -= recovery_amount
+            else:
+                self.crosshair_offset[1] += recovery_amount
+
+            # 조준선 위치 업데이트
+            self.crosshair.setPos(self.crosshair_offset[0], self.crosshair_offset[1])
 
     def _create_gun_ui(self):
         """총기 이미지 UI 생성"""
@@ -276,6 +312,7 @@ class ArenaPulseGame(ShowBase):
         print("[Game] 게임 종료 중...")
         self.player.cleanup()
         self.controls.cleanup()
+        self.chat.cleanup()
         self.db.close()
         sys.exit()
 
