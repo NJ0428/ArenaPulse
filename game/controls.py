@@ -82,9 +82,9 @@ class Controls:
         # 일시정지 (ESC)
         self.game.accept('escape', self._toggle_pause)
 
-        # 채팅 (Enter)
-        self.game.accept('enter', self._toggle_chat)
-        self.game.accept('return', self._toggle_chat)  # 키패드 Enter도 지원
+        # 채팅 (T)
+        self.game.accept('raw-t', self._toggle_chat)
+        self.game.accept('t', self._toggle_chat)
 
     def _setup_mouse(self):
         """마우스 입력 설정"""
