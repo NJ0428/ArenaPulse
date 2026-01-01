@@ -65,12 +65,46 @@ class ChatSystem:
             self.close_chat()
             return
 
+        # 명령어 처리
+        if filtered_text.startswith('/'):
+            self._handle_command(filtered_text)
+            self.chat_entry.enterText('')
+            self.close_chat()
+            return
+
         # 메시지 추가
         self._add_message("Player", filtered_text)
 
         # 입력창 초기화 및 닫기
         self.chat_entry.enterText('')
         self.close_chat()
+
+    def _handle_command(self, command):
+        """명령어 처리"""
+        cmd = command.lower().strip()
+
+        if cmd == '/exit':
+            self._add_system_message("Exiting game...")
+            self.game.userExit()  # 게임 종료
+
+        elif cmd == '/help':
+            help_text = [
+                "Available commands:",
+                "/exit - Exit the game",
+                "/help - Show this help message",
+                "/clear - Clear chat history"
+            ]
+            for line in help_text:
+                self._add_system_message(line)
+
+        elif cmd == '/clear':
+            self.messages.clear()
+            self._update_chat_display()
+            self._add_system_message("Chat cleared")
+
+        else:
+            self._add_system_message(f"Unknown command: {command}")
+            self._add_system_message("Type /help for available commands")
 
     def _add_message(self, sender, message):
         """일반 메시지 추가"""
