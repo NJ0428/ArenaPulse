@@ -64,6 +64,12 @@ class Player:
         # 투사체 리스트
         self.projectiles = []
 
+        # 체력과 방어력
+        self.health = 100  # 체력
+        self.max_health = 100  # 최대 체력
+        self.defense = 100  # 방어력
+        self.max_defense = 100  # 최대 방어력
+
         # 재장전 텍스트 UI
         self.reload_text = None
 
