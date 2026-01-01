@@ -68,6 +68,9 @@ class ArenaPulseGame(ShowBase):
         # 채팅 시스템 생성
         self.chat = ChatSystem(self)
 
+        # 체력과 방어력 UI 생성
+        self._create_stats_ui()
+
         # 메인 업데이트 태스크
         self.taskMgr.add(self._update_task, "UpdateTask")
 
@@ -229,6 +232,9 @@ class ArenaPulseGame(ShowBase):
         # 총알 UI 업데이트
         self._update_ammo_ui()
 
+        # 체력과 방어력 UI 업데이트
+        self._update_stats_ui()
+
         # 조준선 반동 복구
         self._update_crosshair_recoil(dt)
 
@@ -251,6 +257,11 @@ class ArenaPulseGame(ShowBase):
         total_ammo = self.player.gun_total_ammo
 
         self.ammo_text.setText(f"{current_ammo} / {magazine_size}  ({total_ammo})")
+
+    def _update_stats_ui(self):
+        """체력과 방어력 UI 업데이트"""
+        self.health_text.setText(f"HP: {self.player.health}/{self.player.max_health}")
+        self.defense_text.setText(f"DEF: {self.player.defense}/{self.player.max_defense}")
 
     def _update_crosshair_recoil(self, dt):
         """조준선 반동 복구"""
@@ -297,6 +308,28 @@ class ArenaPulseGame(ShowBase):
         self.gun_zoom_image.hide()
 
         print("[Game] Gun UI created")
+
+    def _create_stats_ui(self):
+        """체력과 방어력 UI 생성"""
+        self.health_text = OnscreenText(
+            text="HP: 100",
+            pos=(-0.85, -0.85),
+            scale=0.08,
+            fg=(1, 0.3, 0.3, 1),
+            align=TextNode.ALeft,
+            mayChange=True
+        )
+
+        self.defense_text = OnscreenText(
+            text="DEF: 100",
+            pos=(-0.85, -0.92),
+            scale=0.08,
+            fg=(0.3, 0.6, 1, 1),
+            align=TextNode.ALeft,
+            mayChange=True
+        )
+
+        print("[Game] Stats UI created")
 
     def update_gun_ui(self, is_zoomed):
         """줌 상태에 따른 총기 이미지 변경"""
