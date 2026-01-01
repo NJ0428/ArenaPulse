@@ -19,15 +19,15 @@ class ChatSystem:
         """채팅 UI 생성"""
         # 채팅 메시지 표시 영역 (화면 왼쪽 하단) - 초기에는 숨김
         self.chat_display = DirectLabel(
-            pos=(-0.85, 0, -0.6),
-            frameSize=(-0.01, 0.4, -0.01, 0.35),
+            pos=(-0.83, 0, -0.35),
+            frameSize=(-0.01, 0.5, -0.01, 0.45),
             frameColor=(0, 0, 0, 0.5),
             text="",
-            text_scale=0.035,
+            text_scale=0.04,
             text_align=TextNode.ALeft,
-            text_pos=(0.02, 0.32),
+            text_pos=(0.02, 0.42),
             text_fg=(1, 1, 1, 1),
-            text_wordwrap=12,
+            text_wordwrap=16,
             state=DGG.NORMAL
         )
         self.chat_display.hide()  # 평소에는 숨김
