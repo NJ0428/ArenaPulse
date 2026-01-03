@@ -362,6 +362,14 @@ class Player:
                 proj['node'].getPos() + proj['direction'] * proj['speed'] * dt
             )
 
+            # 표적 충돌 체크
+            hit_target = self.game.targets.check_bullet_collisions(proj['node'].getPos())
+            if hit_target:
+                # 표적에 맞으면 총알 제거
+                proj['node'].removeNode()
+                self.projectiles.remove(proj)
+                continue
+
             # 수명 감소
             proj['lifetime'] -= dt
 
