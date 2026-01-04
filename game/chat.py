@@ -92,7 +92,9 @@ class ChatSystem:
                 "Available commands:",
                 "/exit - Exit the game",
                 "/help - Show this help message",
-                "/clear - Clear chat history"
+                "/clear - Clear chat history",
+                "/target on - Spawn target in front of you",
+                "/target off - Clear all targets"
             ]
             for line in help_text:
                 self._add_system_message(line)
@@ -101,6 +103,14 @@ class ChatSystem:
             self.messages.clear()
             self._update_chat_display()
             self._add_system_message("Chat cleared")
+
+        elif cmd == '/target on':
+            self.game.targets.show_targets()
+            self._add_system_message("Target spawned")
+
+        elif cmd == '/target off':
+            self.game.targets.hide_targets()
+            self._add_system_message("All targets cleared")
 
         else:
             self._add_system_message(f"Unknown command: {command}")

@@ -152,27 +152,42 @@ class TargetSystem:
         self.game = game
         self.targets = []
 
+        # 기본적으로 표적을 생성하지 않음 (꺼진 상태)
+        print("[TargetSystem] 표적 시스템 초기화 완료 (꺼진 상태)")
+
+    def spawn_target(self):
+        """플레이어 눈 앞에 표적 생성"""
+        import math
+
+        # 플레이어 위치와 방향 가져오기
+        player_pos = self.game.player.node.getPos()
+        player_heading = self.game.player.heading
+        player_pitch = self.game.player.pitch
+
+        # 눈 앞 거리 (20~40단위 랜덤)
+        distance = 20 + random.random() * 20
+
+        # 방향 벡터 계산
+        heading_rad = math.radians(player_heading)
+        pitch_rad = math.radians(player_pitch)
+
+        direction_x = -math.sin(heading_rad) * math.cos(pitch_rad)
+        direction_y = math.cos(heading_rad) * math.cos(pitch_rad)
+        direction_z = math.sin(pitch_rad)
+
+        # 표적 위치 계산 (플레이어 눈 높이 고려)
+        eye_height = self.game.player.eye_height
+        target_pos = Point3(
+            player_pos.x + direction_x * distance,
+            player_pos.y + direction_y * distance,
+            player_pos.z + eye_height + direction_z * distance
+        )
+
         # 표적 생성
-        self._create_targets()
+        target = Target(self.game, target_pos)
+        self.targets.append(target)
 
-        print(f"[TargetSystem] 표적 시스템 초기화 완료 (표적 수: {len(self.targets)})")
-
-    def _create_targets(self):
-        """여러 표적 생성"""
-        # 표적 위치들 (랜덤하게 생성)
-        target_positions = [
-            Point3(0, 30, 5),
-            Point3(15, 40, 8),
-            Point3(-15, 35, 6),
-            Point3(10, 50, 10),
-            Point3(-10, 45, 7),
-            Point3(20, 30, 4),
-            Point3(-20, 40, 9),
-        ]
-
-        for pos in target_positions:
-            target = Target(self.game, pos)
-            self.targets.append(target)
+        print(f"[TargetSystem] 표적 생성 완료 (위치: {target_pos:.1f}, 총 {len(self.targets)}개)")
 
     def check_bullet_collisions(self, bullet_pos):
         """
@@ -195,6 +210,17 @@ class TargetSystem:
         """모든 표적 업데이트"""
         for target in self.targets:
             target.update(dt)
+
+    def show_targets(self):
+        """플레이어 눈 앞에 새 표적 생성"""
+        self.spawn_target()
+
+    def hide_targets(self):
+        """모든 표적 제거"""
+        for target in self.targets:
+            target.cleanup()
+        self.targets.clear()
+        print("[TargetSystem] 모든 표적 제거")
 
     def cleanup(self):
         """정리"""
