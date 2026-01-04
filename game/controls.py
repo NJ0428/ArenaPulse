@@ -99,47 +99,51 @@ class Controls:
 
     def _set_move(self, direction, value):
         """이동 상태 설정"""
-        if not self.paused:
+        if not self.paused and not self.game.game_over:
             self.player.moving[direction] = value
 
     def _start_firing(self):
         """발사 시작"""
-        if not self.paused:
+        if not self.paused and not self.game.game_over:
             self.player.start_firing()
 
     def _stop_firing(self):
         """발사 중지"""
-        if not self.paused:
+        if not self.paused and not self.game.game_over:
             self.player.stop_firing()
 
     def _toggle_zoom(self):
         """줌 토글"""
-        if not self.paused:
+        if not self.paused and not self.game.game_over:
             self.player.toggle_zoom()
 
     def _jump(self):
         """점프"""
-        if not self.paused:
+        if not self.paused and not self.game.game_over:
             self.player.jump()
 
     def _set_run(self, running):
         """달리기 상태 설정"""
-        if not self.paused:
+        if not self.paused and not self.game.game_over:
             self.player.set_running(running)
 
     def _reload(self):
         """재장전"""
-        if not self.paused:
+        if not self.paused and not self.game.game_over:
             self.player._reload()
 
     def _toggle_chat(self):
         """채팅 토글"""
-        # 일시정지 상태가 아닐 때만 채팅 토글
-        if not self.paused:
+        # 일시정지 상태나 게임 오버 상태가 아닐 때만 채팅 토글
+        if not self.paused and not self.game.game_over:
             self.game.chat.toggle_chat()
 
     def _toggle_pause(self):
         """일시정지 토글"""
+        # 게임 오버 상태에서는 일시정지 불가
+        if self.game.game_over:
+            return
+
         self.paused = not self.paused
 
         props = WindowProperties()
@@ -172,7 +176,7 @@ class Controls:
 
     def update(self):
         """매 프레임 컨트롤 업데이트 (마우스 회전)"""
-        if self.paused:
+        if self.paused or self.game.game_over:
             return
 
         # 현재 마우스 위치 가져오기
