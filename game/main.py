@@ -436,7 +436,7 @@ class ArenaPulseGame(ShowBase):
         self.player.velocity_z = 0.0
 
         # 카메라 리셋
-        lens = self.game.camLens
+        lens = self.camLens
         lens.setFov(60)  # 기본 FOV로 리셋
         self.update_gun_ui(False)
 
