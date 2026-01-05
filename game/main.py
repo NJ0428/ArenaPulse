@@ -75,6 +75,12 @@ class ArenaPulseGame(ShowBase):
         # 체력과 방어력 UI 생성
         self._create_stats_ui()
 
+        # 게임 오버 화면 생성
+        self._create_game_over_screen()
+
+        # 게임 상태
+        self.game_over = False
+
         # 메인 업데이트 태스크
         self.taskMgr.add(self._update_task, "UpdateTask")
 
@@ -228,22 +234,28 @@ class ArenaPulseGame(ShowBase):
         """메인 게임 루프"""
         dt = globalClock.getDt()
 
-        if not self.controls.is_paused() and not self.chat.is_open():
-            self.player.update(dt)
-            self.controls.update()
-            self._update_clouds(dt)
+        # 게임 오버 상태가 아니면 업데이트 진행
+        if not self.game_over:
+            if not self.controls.is_paused() and not self.chat.is_open():
+                self.player.update(dt)
+                self.controls.update()
+                self._update_clouds(dt)
 
-        # 표적 시스템 업데이트
-        self.targets.update(dt)
+                # 바운드 체크
+                if self._check_bounds():
+                    self.show_game_over()
 
-        # 총알 UI 업데이트
-        self._update_ammo_ui()
+            # 표적 시스템 업데이트
+            self.targets.update(dt)
 
-        # 체력과 방어력 UI 업데이트
-        self._update_stats_ui()
+            # 총알 UI 업데이트
+            self._update_ammo_ui()
 
-        # 조준선 반동 복구
-        self._update_crosshair_recoil(dt)
+            # 체력과 방어력 UI 업데이트
+            self._update_stats_ui()
+
+            # 조준선 반동 복구
+            self._update_crosshair_recoil(dt)
 
         return Task.cont
 
@@ -337,6 +349,120 @@ class ArenaPulseGame(ShowBase):
         )
 
         print("[Game] Stats UI created")
+
+    def _create_game_over_screen(self):
+        """게임 오버 화면 생성"""
+        from direct.gui.DirectGui import DirectFrame, DirectButton, DGG
+
+        # 게임 오버 프레임 (초기에는 숨김)
+        self.game_over_frame = DirectFrame(
+            pos=(0, 0, 0),
+            frameSize=(-0.5, 0.5, -0.4, 0.4),
+            frameColor=(0.1, 0.1, 0.1, 0.9),
+            state=DGG.NORMAL
+        )
+        self.game_over_frame.hide()
+
+        # 게임 오버 텍스트
+        self.game_over_text = OnscreenText(
+            text="GAME OVER",
+            pos=(0, 0.2),
+            scale=0.15,
+            fg=(1, 0.2, 0.2, 1),
+            align=TextNode.ACenter,
+            mayChange=False
+        )
+        self.game_over_text.hide()
+
+        # 재시작 버튼
+        self.restart_button = DirectButton(
+            parent=self.game_over_frame,
+            pos=(0, 0, 0.05),
+            scale=0.1,
+            text="RESTART",
+            text_fg=(1, 1, 1, 1),
+            frameColor=(0.2, 0.6, 0.2, 1),
+            frameSize=(-2, 2, -0.5, 0.5),
+            command=self._restart_game
+        )
+
+        # 종료 버튼
+        self.quit_button = DirectButton(
+            parent=self.game_over_frame,
+            pos=(0, 0, -0.15),
+            scale=0.1,
+            text="QUIT",
+            text_fg=(1, 1, 1, 1),
+            frameColor=(0.6, 0.2, 0.2, 1),
+            frameSize=(-2, 2, -0.5, 0.5),
+            command=self._exit_game
+        )
+
+        print("[Game] Game Over screen created")
+
+    def show_game_over(self):
+        """게임 오버 화면 표시"""
+        self.game_over = True
+        self.game_over_frame.show()
+        self.game_over_text.show()
+
+        # 마우스 커서 표시
+        props = WindowProperties()
+        props.setCursorHidden(False)
+        props.setMouseMode(WindowProperties.M_absolute)
+        self.win.requestProperties(props)
+
+        print("[Game] Game Over!")
+
+    def _restart_game(self):
+        """게임 재시작"""
+        print("[Game] Restarting game...")
+
+        # 게임 오버 상태 해제
+        self.game_over = False
+        self.game_over_frame.hide()
+        self.game_over_text.hide()
+
+        # 플레이어 상태 초기화
+        self.player.node.setPos(0, 0, 0)
+        self.player.health = self.player.max_health
+        self.player.defense = self.player.max_defense
+        self.player.gun_current_ammo = self.player.gun_magazine_size
+        self.player.gun_total_ammo = 300
+        self.player.heading = 0
+        self.player.pitch = 10
+        self.player.node.setH(0)
+        self.player.camera_node.setP(10)
+        self.player.velocity_z = 0.0
+
+        # 카메라 리셋
+        lens = self.game.camLens
+        lens.setFov(60)  # 기본 FOV로 리셋
+        self.update_gun_ui(False)
+
+        # 표적 시스템 리셋
+        self.targets.hide_targets()
+
+        # 마우스 다시 숨기고 중앙으로
+        props = WindowProperties()
+        props.setCursorHidden(True)
+        props.setMouseMode(WindowProperties.M_confined)
+        self.win.requestProperties(props)
+        center_x = self.win.getXSize() // 2
+        center_y = self.win.getYSize() // 2
+        self.win.movePointer(0, center_x, center_y)
+
+        print("[Game] Game restarted!")
+
+    def _check_bounds(self):
+        """플레이어가 바운드를 벗어났는지 체크"""
+        pos = self.player.node.getPos()
+        x, y = pos.x, pos.y
+
+        # 바닥 범위는 -100~100
+        if x < -100 or x > 100 or y < -100 or y > 100:
+            return True
+        return False
 
     def update_gun_ui(self, is_zoomed):
         """줌 상태에 따른 총기 이미지 변경"""
