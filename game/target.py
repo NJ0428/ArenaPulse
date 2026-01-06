@@ -110,6 +110,9 @@ class Target:
         else:
             print("[Target] Hit!")
 
+        # 명중 사운드 재생
+        self.game.sound.play('target_hit')
+
         return True
 
     def _show_hit_message(self):
