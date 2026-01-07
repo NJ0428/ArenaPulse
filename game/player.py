@@ -178,6 +178,8 @@ class Player:
 
         # 탄약 체크
         if self.gun_current_ammo <= 0:
+            # 빈 탄창 소리 재생
+            self.game.sound.play('empty_click')
             self._reload()
             return
 
@@ -187,6 +189,9 @@ class Player:
 
         self.gun_current_ammo -= 1
         self.fire_cooldown = self.gun_fire_rate  # 쿨다운 설정
+
+        # 발사 사운드 재생
+        self.game.sound.play('gun_shot')
 
         # 총알 생성 (카드 메이커로 평면 생성)
         from panda3d.core import CardMaker
@@ -349,6 +354,9 @@ class Player:
         self.gun_total_ammo -= ammo_to_add
 
         self.is_reloading = False
+
+        # 재장전 완료 사운드 재생
+        self.game.sound.play('gun_reload')
 
         print(f"[Player] Reloaded! Ammo: {self.gun_current_ammo}/{self.gun_magazine_size}")
 
