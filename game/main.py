@@ -27,6 +27,7 @@ from game.player import Player
 from game.controls import Controls
 from game.chat import ChatSystem
 from game.target import TargetSystem
+from game.sound import SoundManager
 
 
 class ArenaPulseGame(ShowBase):
@@ -38,6 +39,9 @@ class ArenaPulseGame(ShowBase):
 
         # 데이터베이스 초기화
         self.db = Database()
+
+        # 사운드 매니저 초기화
+        self.sound = SoundManager(self)
 
         # 조명 설정
         self._setup_lights()
@@ -480,6 +484,7 @@ class ArenaPulseGame(ShowBase):
         self.controls.cleanup()
         self.chat.cleanup()
         self.targets.cleanup()
+        self.sound.cleanup()
         self.db.close()
         sys.exit()
 
