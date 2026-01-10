@@ -75,6 +75,10 @@ class Controls:
         self.game.accept('rshift', self._set_run, [True])
         self.game.accept('rshift-up', self._set_run, [False])
 
+        # 숨쉬기 (Ctrl)
+        self.game.accept('lcontrol', self._toggle_crouch)
+        self.game.accept('rcontrol', self._toggle_crouch)
+
         # 재장전 (R)
         self.game.accept('raw-r', self._reload)
         self.game.accept('r', self._reload)
@@ -126,6 +130,11 @@ class Controls:
         """달리기 상태 설정"""
         if not self.paused and not self.game.game_over:
             self.player.set_running(running)
+
+    def _toggle_crouch(self):
+        """숨쉬기 토글"""
+        if not self.paused and not self.game.game_over:
+            self.player.toggle_crouch()
 
     def _reload(self):
         """재장전"""

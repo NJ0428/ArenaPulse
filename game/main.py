@@ -89,7 +89,7 @@ class ArenaPulseGame(ShowBase):
         self.taskMgr.add(self._update_task, "UpdateTask")
 
         print("[Game] ArenaPulse game started! (DOOM style FPS)")
-        print("[Game] WASD: Move | Mouse: Aim | L-Click: Shoot | R-Click: Zoom | Space: Jump | R: Reload | ESC: Pause")
+        print("[Game] WASD: Move | Mouse: Aim | L-Click: Shoot | R-Click: Zoom | Space: Jump | Shift: Sprint | Ctrl: Crouch | R: Reload | ESC: Pause")
 
     def _setup_window(self):
         """창 설정"""
@@ -286,6 +286,10 @@ class ArenaPulseGame(ShowBase):
         self.health_text.setText(f"HP: {self.player.health}/{self.player.max_health}")
         self.defense_text.setText(f"DEF: {self.player.defense}/{self.player.max_defense}")
 
+        # 스태미나 UI 업데이트
+        stamina_value = int(self.player.stamina)
+        self.stamina_text.setText(f"STA: {stamina_value}/{self.player.max_stamina}")
+
     def _update_crosshair_recoil(self, dt):
         """조준선 반동 복구"""
         # 오프셋 감소 (복구)
@@ -348,6 +352,16 @@ class ArenaPulseGame(ShowBase):
             pos=(-0.85, -0.92),
             scale=0.08,
             fg=(0.3, 0.6, 1, 1),
+            align=TextNode.ALeft,
+            mayChange=True
+        )
+
+        # 스태미나 UI 추가
+        self.stamina_text = OnscreenText(
+            text="STA: 100",
+            pos=(-0.85, -0.99),
+            scale=0.08,
+            fg=(0.3, 1, 0.5, 1),
             align=TextNode.ALeft,
             mayChange=True
         )
