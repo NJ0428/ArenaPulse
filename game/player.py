@@ -10,9 +10,16 @@ class Player:
         self.game = game
         self.walk_speed = 15.0
         self.run_speed = 25.0
+        self.crouch_speed = 8.0  # 숨쉬기 속도
         self.speed = self.walk_speed
         self.is_running = False
-        self.eye_height = 2.5  # 눈 높이
+        self.is_crouching = False
+
+        # 눈 높이 (일반/숨쉬기)
+        self.eye_height = 2.5  # 일반 눈 높이
+        self.crouch_eye_height = 1.2  # 숨쉬기 눈 높이
+        self.crouch_transition_speed = 8.0  # 숨쉬기 전환 속도
+        self.current_eye_height = self.eye_height
 
         # 중력 관련
         self.gravity = -30.0  # 중력 가속도
@@ -73,6 +80,14 @@ class Player:
         # 재장전 텍스트 UI
         self.reload_text = None
 
+        # 스태미나 시스템
+        self.stamina = 100.0  # 현재 스태미나
+        self.max_stamina = 100.0  # 최대 스태미나
+        self.stamina_drain_rate = 20.0  # 달리기 시 스태미나 소모율 (초당)
+        self.stamina_regen_rate = 15.0  # 스태미나 재생율 (초당, 걷거나 멈출 때)
+        self.stamina_regen_delay = 0.5  # 달리기 후 재생 시작 지연 시간
+        self.stamina_regen_timer = 0.0  # 재생 타이머
+
     def _create_player_node(self):
         """플레이어 노드 생성 (1인칭이므로 보이지 않음)"""
         self.node = self.game.render.attachNewNode("player")
@@ -95,6 +110,8 @@ class Player:
         """매 프레임 업데이트"""
         self._update_gravity(dt)
         self._update_movement(dt)
+        self._update_stamina(dt)  # 스태미나 업데이트
+        self._update_crouch_height(dt)  # 숨쉬기 높이 업데이트
         self._update_projectiles(dt)
         self._update_recoil(dt)  # 반동 복구
         self._update_firing(dt)  # 연발 처리
@@ -168,8 +185,38 @@ class Player:
 
     def set_running(self, running):
         """달리기 상태 설정"""
+        # 숨쉬기 중이면 달릴 수 없음
+        if self.is_crouching and running:
+            return
+
+        # 스태미나가 부족하면 달릴 수 없음
+        if running and self.stamina <= 0:
+            self.is_running = False
+            self.speed = self.crouch_speed if self.is_crouching else self.walk_speed
+            return
+
         self.is_running = running
-        self.speed = self.run_speed if running else self.walk_speed
+        self._update_speed()
+
+    def toggle_crouch(self):
+        """숨쉬기 토글"""
+        self.is_crouching = not self.is_crouching
+
+        # 숨쉬기 상태에서는 달리기 불가
+        if self.is_crouching:
+            self.is_running = False
+
+        self._update_speed()
+        print(f"[Player] Crouch {'ON' if self.is_crouching else 'OFF'}")
+
+    def _update_speed(self):
+        """현재 상태에 따른 속도 업데이트"""
+        if self.is_crouching:
+            self.speed = self.crouch_speed
+        elif self.is_running:
+            self.speed = self.run_speed
+        else:
+            self.speed = self.walk_speed
 
     def ranged_attack(self):
         """Ranged attack (gun shooting)"""
@@ -389,6 +436,44 @@ class Player:
     def get_position(self):
         """플레이어 위치 반환"""
         return self.node.getPos()
+
+    def _update_stamina(self, dt):
+        """스태미나 업데이트"""
+        # 이동 중인지 체크
+        is_moving = any(self.moving.values())
+
+        if self.is_running and is_moving and self.stamina > 0:
+            # 달리기 중: 스태미나 소모
+            self.stamina -= self.stamina_drain_rate * dt
+            if self.stamina < 0:
+                self.stamina = 0
+                # 스태미나가 고갈되면 걷기로 전환
+                self.is_running = False
+                self._update_speed()
+            self.stamina_regen_timer = 0.0  # 재생 타이머 리셋
+        else:
+            # 달리기 중이 아니면 스태미나 재생
+            if self.stamina_regen_timer < self.stamina_regen_delay:
+                self.stamina_regen_timer += dt
+            else:
+                # 재생 지연 후 스태미나 회복
+                self.stamina += self.stamina_regen_rate * dt
+                if self.stamina > self.max_stamina:
+                    self.stamina = self.max_stamina
+
+    def _update_crouch_height(self, dt):
+        """숨쉬기 높이 업데이트 (부드러운 전환)"""
+        target_height = self.crouch_eye_height if self.is_crouching else self.eye_height
+
+        # 현재 높이에서 목표 높이로 부드럽게 전환
+        diff = target_height - self.current_eye_height
+        if abs(diff) > 0.01:
+            self.current_eye_height += diff * self.crouch_transition_speed * dt
+            self.camera_node.setZ(self.current_eye_height)
+        else:
+            # 목표에 도달하면 정확히 설정
+            self.current_eye_height = target_height
+            self.camera_node.setZ(self.current_eye_height)
 
     def cleanup(self):
         """정리"""
