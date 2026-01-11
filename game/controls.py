@@ -90,6 +90,10 @@ class Controls:
         self.game.accept('raw-t', self._toggle_chat)
         self.game.accept('t', self._toggle_chat)
 
+        # 장애물 생성 (O)
+        self.game.accept('raw-o', self._add_obstacle)
+        self.game.accept('o', self._add_obstacle)
+
     def _setup_mouse(self):
         """마우스 입력 설정"""
         # 좌클릭 다운 - 발사 시작
@@ -146,6 +150,12 @@ class Controls:
         # 일시정지 상태나 게임 오버 상태가 아닐 때만 채팅 토글
         if not self.paused and not self.game.game_over:
             self.game.chat.toggle_chat()
+
+    def _add_obstacle(self):
+        """장애물 생성"""
+        if not self.paused and not self.game.game_over:
+            player_pos = self.player.node.getPos()
+            self.game.obstacles.add_random_obstacle(player_pos)
 
     def _toggle_pause(self):
         """일시정지 토글"""

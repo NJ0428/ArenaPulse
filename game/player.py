@@ -160,7 +160,14 @@ class Player:
             move_vec.normalize()
             move_vec *= self.speed * dt
 
-            new_pos = self.node.getPos() + move_vec
+            current_pos = self.node.getPos()
+            new_pos = current_pos + move_vec
+
+            # 장애물 충돌 체크
+            if self.game.obstacles.check_player_collision(current_pos, new_pos):
+                # 충돌이 있으면 이동하지 않음
+                return
+
             self.node.setPos(new_pos)
 
     def rotate_heading(self, delta):
