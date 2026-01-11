@@ -77,28 +77,27 @@ class Obstacle:
         for face in faces:
             face.reparentTo(self.node)
 
-        # 텍스처 로드
+        # 텍스처 로드 (예외 처리로 파일 없을 시 기본 색상 사용)
         if self.type == "crate":
-            texture = self.game.loader.loadTexture("textures/crate.png")
-            if texture:
+            try:
+                texture = self.game.loader.loadTexture("textures/crate.png")
                 self.node.setTexture(texture)
-                # 텍스처 반복 설정
                 texture.setWrapU(Texture.WMRepeat)
                 texture.setWrapV(Texture.WMRepeat)
-            else:
+            except:
                 # 텍스처 없으면 기본 색상 (나무색)
                 self.node.setColor(0.6, 0.4, 0.2, 1.0)
         elif self.type == "wall":
-            texture = self.game.loader.loadTexture("textures/brick.png")
-            if texture:
+            try:
+                texture = self.game.loader.loadTexture("textures/brick.png")
                 self.node.setTexture(texture)
-            else:
+            except:
                 self.node.setColor(0.5, 0.5, 0.5, 1.0)
         elif self.type == "pillar":
-            texture = self.game.loader.loadTexture("textures/stone.png")
-            if texture:
+            try:
+                texture = self.game.loader.loadTexture("textures/stone.png")
                 self.node.setTexture(texture)
-            else:
+            except:
                 self.node.setColor(0.7, 0.7, 0.7, 1.0)
 
     def _create_collision_box(self):

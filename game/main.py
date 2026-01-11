@@ -28,6 +28,7 @@ from game.controls import Controls
 from game.chat import ChatSystem
 from game.target import TargetSystem
 from game.sound import SoundManager
+from game.obstacle import ObstacleSystem
 
 
 class ArenaPulseGame(ShowBase):
@@ -75,6 +76,9 @@ class ArenaPulseGame(ShowBase):
 
         # 표적 시스템 생성
         self.targets = TargetSystem(self)
+
+        # 장애물 시스템 생성
+        self.obstacles = ObstacleSystem(self)
 
         # 체력과 방어력 UI 생성
         self._create_stats_ui()
@@ -498,6 +502,7 @@ class ArenaPulseGame(ShowBase):
         self.controls.cleanup()
         self.chat.cleanup()
         self.targets.cleanup()
+        self.obstacles.cleanup()
         self.sound.cleanup()
         self.db.close()
         sys.exit()
