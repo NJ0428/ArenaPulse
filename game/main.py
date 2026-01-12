@@ -29,6 +29,7 @@ from game.chat import ChatSystem
 from game.target import TargetSystem
 from game.sound import SoundManager
 from game.obstacle import ObstacleSystem
+from game.daynight import DayNightCycle
 
 
 class ArenaPulseGame(ShowBase):
@@ -80,6 +81,9 @@ class ArenaPulseGame(ShowBase):
         # 장애물 시스템 생성
         self.obstacles = ObstacleSystem(self)
 
+        # 밤낮 시스템 생성
+        self.daynight = DayNightCycle(self)
+
         # 체력과 방어력 UI 생성
         self._create_stats_ui()
 
@@ -110,17 +114,17 @@ class ArenaPulseGame(ShowBase):
     def _setup_lights(self):
         """조명 설정"""
         # 주변광 (Ambient Light) - 더 밝게
-        ambient_light = AmbientLight("ambient_light")
-        ambient_light.setColor(Vec4(0.5, 0.5, 0.5, 1))
-        ambient_light_np = self.render.attachNewNode(ambient_light)
-        self.render.setLight(ambient_light_np)
+        self.ambient_light = AmbientLight("ambient_light")
+        self.ambient_light.setColor(Vec4(0.5, 0.5, 0.5, 1))
+        self.ambient_light_np = self.render.attachNewNode(self.ambient_light)
+        self.render.setLight(self.ambient_light_np)
 
         # 방향광 (Directional Light)
-        directional_light = DirectionalLight("directional_light")
-        directional_light.setColor(Vec4(0.8, 0.8, 0.8, 1))
-        directional_light_np = self.render.attachNewNode(directional_light)
-        directional_light_np.setHpr(45, -45, 0)
-        self.render.setLight(directional_light_np)
+        self.directional_light = DirectionalLight("directional_light")
+        self.directional_light.setColor(Vec4(0.8, 0.8, 0.8, 1))
+        self.directional_light_np = self.render.attachNewNode(self.directional_light)
+        self.directional_light_np.setHpr(45, -45, 0)
+        self.render.setLight(self.directional_light_np)
 
         print("[Game] 조명 설정 완료")
 
@@ -255,6 +259,10 @@ class ArenaPulseGame(ShowBase):
 
             # 표적 시스템 업데이트
             self.targets.update(dt)
+
+            # 밤낮 시스템 업데이트 (일시정지 중이 아닐 때만)
+            if not self.controls.is_paused():
+                self.daynight.update(dt)
 
             # 총알 UI 업데이트
             self._update_ammo_ui()
@@ -503,6 +511,7 @@ class ArenaPulseGame(ShowBase):
         self.chat.cleanup()
         self.targets.cleanup()
         self.obstacles.cleanup()
+        self.daynight.cleanup()
         self.sound.cleanup()
         self.db.close()
         sys.exit()
