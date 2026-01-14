@@ -30,6 +30,7 @@ from game.target import TargetSystem
 from game.sound import SoundManager
 from game.obstacle import ObstacleSystem
 from game.daynight import DayNightCycle
+from game.enemy import EnemySystem
 
 
 class ArenaPulseGame(ShowBase):
@@ -83,6 +84,9 @@ class ArenaPulseGame(ShowBase):
 
         # 밤낮 시스템 생성
         self.daynight = DayNightCycle(self)
+
+        # 적 시스템 생성
+        self.enemies = EnemySystem(self)
 
         # 체력과 방어력 UI 생성
         self._create_stats_ui()
@@ -259,6 +263,9 @@ class ArenaPulseGame(ShowBase):
 
             # 표적 시스템 업데이트
             self.targets.update(dt)
+
+            # 적 시스템 업데이트
+            self.enemies.update(dt)
 
             # 밤낮 시스템 업데이트 (일시정지 중이 아닐 때만)
             if not self.controls.is_paused():
@@ -473,6 +480,11 @@ class ArenaPulseGame(ShowBase):
         # 표적 시스템 리셋
         self.targets.hide_targets()
 
+        # 적 시스템 리셋
+        for enemy in self.enemies.enemies[:]:
+            enemy.cleanup()
+        self.enemies.enemies.clear()
+
         # 마우스 다시 숨기고 중앙으로
         props = WindowProperties()
         props.setCursorHidden(True)
@@ -512,6 +524,7 @@ class ArenaPulseGame(ShowBase):
         self.targets.cleanup()
         self.obstacles.cleanup()
         self.daynight.cleanup()
+        self.enemies.cleanup()
         self.sound.cleanup()
         self.db.close()
         sys.exit()

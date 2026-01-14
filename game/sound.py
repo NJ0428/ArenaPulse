@@ -56,13 +56,13 @@ class SoundManager:
                     sound = self.base.loader.loadSfx(filepath)
                     if sound:
                         self.sounds[name] = sound
-                        print(f"[사운드] ✓ 로드 성공: {filename}")
+                        print(f"[사운드] [OK] 로드 성공: {filename}")
                     else:
-                        print(f"[사운드] ✗ 로드 실패 (None 반환): {filename}")
+                        print(f"[사운드] [FAIL] 로드 실패 (None 반환): {filename}")
                 except Exception as e:
-                    print(f"[사운드] ✗ 로드 에러 ({filename}): {e}")
+                    print(f"[사운드] [FAIL] 로드 에러 ({filename}): {e}")
             else:
-                print(f"[사운드] ✗ 파일 없음: {filepath}")
+                print(f"[사운드] [FAIL] 파일 없음: {filepath}")
 
         print(f"[사운드] 총 {len(self.sounds)}개 사운드 로드됨")
 
@@ -98,7 +98,7 @@ class SoundManager:
             print(f"[사운드] 재생: {sound_name} (볼륨: {final_volume:.2f}, 상태: {status})")
             return True
         else:
-            print(f"[사운드] ✗ 사운드 없음: {sound_name}")
+            print(f"[사운드] [FAIL] 사운드 없음: {sound_name}")
             return False
 
     def play_looping(self, sound_name: str, volume: float = 1.0) -> bool:
