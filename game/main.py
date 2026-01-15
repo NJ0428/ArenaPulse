@@ -2,6 +2,7 @@ from direct.showbase.ShowBase import ShowBase
 from direct.task import Task
 from direct.gui.OnscreenText import OnscreenText
 from direct.gui.OnscreenImage import OnscreenImage
+from direct.gui.DirectGui import DirectFrame, DGG
 from panda3d.core import (
     WindowProperties,
     AmbientLight,
@@ -90,6 +91,18 @@ class ArenaPulseGame(ShowBase):
 
         # 체력과 방어력 UI 생성
         self._create_stats_ui()
+
+        # 스코어 UI 생성
+        self._create_score_ui()
+
+        # 킬 피드 UI 생성
+        self._create_kill_feed_ui()
+
+        # 데미지 인디케이터 생성
+        self._create_damage_indicator()
+
+        # 웨이브 알림 생성
+        self._create_wave_notification()
 
         # 게임 오버 화면 생성
         self._create_game_over_screen()
@@ -279,6 +292,15 @@ class ArenaPulseGame(ShowBase):
 
             # 조준선 반동 복구
             self._update_crosshair_recoil(dt)
+
+            # 킬 피드 업데이트
+            self.update_kill_feed(dt)
+
+            # 데미지 인디케이터 업데이트
+            self.update_damage_indicator(dt)
+
+            # 웨이브 알림 업데이트
+            self.update_wave_notification(dt)
 
         return Task.cont
 
@@ -495,6 +517,191 @@ class ArenaPulseGame(ShowBase):
         self.win.movePointer(0, center_x, center_y)
 
         print("[Game] Game restarted!")
+
+    def _create_score_ui(self):
+        """스코어 및 웨이브 UI 생성"""
+        # 스코어 텍스트
+        self.score_text = OnscreenText(
+            text="SCORE: 0",
+            pos=(0.85, -0.85),
+            scale=0.08,
+            fg=(1, 1, 1, 1),
+            align=TextNode.ARight,
+            mayChange=True
+        )
+
+        # 킬 카운트 텍스트
+        self.kill_text = OnscreenText(
+            text="KILLS: 0",
+            pos=(0.85, -0.92),
+            scale=0.08,
+            fg=(1, 0.6, 0.2, 1),
+            align=TextNode.ARight,
+            mayChange=True
+        )
+
+        # 웨이브 텍스트
+        self.wave_text = OnscreenText(
+            text="WAVE: 1",
+            pos=(0.85, -0.99),
+            scale=0.08,
+            fg=(0.5, 0.8, 1, 1),
+            align=TextNode.ARight,
+            mayChange=True
+        )
+
+        print("[Game] Score UI created")
+
+    def update_score_ui(self):
+        """스코어 UI 업데이트"""
+        stats = self.enemies.get_stats()
+        self.score_text.setText(f"SCORE: {stats['score']}")
+        self.kill_text.setText(f"KILLS: {stats['kills']}")
+        self.wave_text.setText(f"WAVE: {stats['wave']}")
+
+    def _create_kill_feed_ui(self):
+        """킬 피드 UI 생성"""
+        self.kill_feed_entries = []
+        self.max_kill_feed_entries = 5
+        self.kill_feed_duration = 3.0  # 3초 후 제거
+
+        print("[Game] Kill Feed UI created")
+
+    def add_kill_feed(self, enemy_type, score):
+        """킬 피드에 추가"""
+        # 적 타입별 색상
+        colors = {
+            'melee': (0.9, 0.2, 0.2, 1),    # 빨간색
+            'ranged': (0.8, 0.2, 0.8, 1),   # 보라색
+            'sprinter': (1.0, 0.8, 0.0, 1),  # 노란색
+            'tank': (0.3, 0.3, 0.3, 1),     # 검은색
+            'bomber': (1.0, 0.5, 0.0, 1)    # 주황색
+        }
+
+        color = colors.get(enemy_type, (1, 1, 1, 1))
+
+        # 킬 메시지 생성
+        entry = OnscreenText(
+            text=f"Killed {enemy_type.upper()} (+{score})",
+            pos=(0.5, 0.3 - len(self.kill_feed_entries) * 0.05),
+            scale=0.05,
+            fg=color,
+            align=TextNode.ACenter,
+            mayChange=True
+        )
+
+        self.kill_feed_entries.append({
+            'node': entry,
+            'time': 0.0,
+            'base_color': color
+        })
+
+        # 최대 개수 초과시 가장 오래된 것 제거
+        if len(self.kill_feed_entries) > self.max_kill_feed_entries:
+            oldest = self.kill_feed_entries.pop(0)
+            oldest['node'].destroy()
+
+    def update_kill_feed(self, dt):
+        """킬 피드 업데이트"""
+        for entry in self.kill_feed_entries[:]:
+            entry['time'] += dt
+
+            # 시간 초과시 제거
+            if entry['time'] >= self.kill_feed_duration:
+                entry['node'].destroy()
+                self.kill_feed_entries.remove(entry)
+            else:
+                # 페이드 아웃 효과
+                alpha = 1.0 - (entry['time'] / self.kill_feed_duration)
+                base_color = entry['base_color']
+                entry['node'].setFg((
+                    base_color[0],
+                    base_color[1],
+                    base_color[2],
+                    alpha
+                ))
+
+    def _create_damage_indicator(self):
+        """데미지 인디케이터 생성 (빨간 화면 효과)"""
+        self.damage_frame = DirectFrame(
+            frameSize=(-1, 1, -1, 1),
+            frameColor=(1, 0, 0, 0),
+            state=DGG.NORMAL
+        )
+        self.damage_frame.hide()
+
+        self.damage_alpha = 0.0
+        self.damage_recovery_speed = 3.0
+
+        print("[Game] Damage Indicator created")
+
+    def show_damage_indicator(self):
+        """데미지 인디케이터 표시"""
+        self.damage_alpha = 0.4  # 최대 투명도
+        self.damage_frame['frameColor'] = (1, 0, 0, self.damage_alpha)
+        self.damage_frame.show()
+
+    def update_damage_indicator(self, dt):
+        """데미지 인디케이터 업데이트 (페이드 아웃)"""
+        if self.damage_alpha > 0:
+            self.damage_alpha -= self.damage_recovery_speed * dt
+            if self.damage_alpha < 0:
+                self.damage_alpha = 0
+                self.damage_frame.hide()
+            else:
+                self.damage_frame['frameColor'] = (1, 0, 0, self.damage_alpha)
+
+    def _create_wave_notification(self):
+        """웨이브 알림 UI 생성"""
+        self.wave_notification_text = OnscreenText(
+            text="",
+            pos=(0, 0.2),
+            scale=0.15,
+            fg=(1, 1, 1, 1),
+            align=TextNode.ACenter,
+            mayChange=True
+        )
+        self.wave_notification_text.hide()
+
+        self.wave_notification_alpha = 0.0
+        self.wave_notification_timer = 0.0
+        self.wave_notification_duration = 3.0
+
+        print("[Game] Wave Notification created")
+
+    def show_wave_notification(self, wave_num):
+        """웨이브 알림 표시"""
+        self.wave_notification_text.setText(f"WAVE {wave_num}")
+        self.wave_notification_text['fg'] = (1, 0.8, 0.2, 1)  # 금색
+        self.wave_notification_text.show()
+
+        self.wave_notification_alpha = 1.0
+        self.wave_notification_timer = 0.0
+
+        print(f"[Game] 웨이브 {wave_num} 알림 표시")
+
+    def update_wave_notification(self, dt):
+        """웨이브 알림 업데이트 (페이드 아웃 후 이동)"""
+        if self.wave_notification_alpha > 0:
+            self.wave_notification_timer += dt
+
+            # 1초간 표시 후 페이드 아웃
+            if self.wave_notification_timer >= 1.0:
+                self.wave_notification_alpha -= 2.0 * dt
+
+                if self.wave_notification_alpha <= 0:
+                    self.wave_notification_alpha = 0
+                    self.wave_notification_text.hide()
+                else:
+                    # 페이드 아웃
+                    self.wave_notification_text['fg'] = (
+                        1, 0.8, 0.2,
+                        self.wave_notification_alpha
+                    )
+
+            # 위로 이동
+            current_pos = self.wave_notification_text.getPos()
+            self.wave_notification_text.setPos(current_pos.x, current_pos.y + 0.05 * dt)
 
     def _check_bounds(self):
         """플레이어가 바운드를 벗어났는지 체크"""
