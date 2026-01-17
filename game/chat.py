@@ -94,7 +94,8 @@ class ChatSystem:
                 "/help - Show this help message",
                 "/clear - Clear chat history",
                 "/target on - Spawn target in front of you",
-                "/target off - Clear all targets"
+                "/target off - Clear all targets",
+                "/spawn [type] - Spawn enemy (melee, ranged, sprinter, tank, bomber)"
             ]
             for line in help_text:
                 self._add_system_message(line)
@@ -111,6 +112,48 @@ class ChatSystem:
         elif cmd == '/target off':
             self.game.targets.hide_targets()
             self._add_system_message("All targets cleared")
+
+        elif cmd.startswith('/spawn'):
+            # 적 생성 명령어
+            parts = cmd.split()
+            enemy_type = None
+
+            if len(parts) > 1:
+                enemy_type = parts[1].lower()
+                # 유효한 적 타입 확인
+                valid_types = ['melee', 'ranged', 'sprinter', 'tank', 'bomber']
+                if enemy_type not in valid_types:
+                    self._add_system_message(f"Invalid enemy type: {enemy_type}")
+                    self._add_system_message("Valid types: melee, ranged, sprinter, tank, bomber")
+                    return
+
+            # 적 생성
+            self.game.enemies.spawn_enemy(enemy_type)
+            if enemy_type:
+                self._add_system_message(f"Spawned {enemy_type} enemy")
+            else:
+                self._add_system_message("Spawned random enemy")
+
+        elif cmd.startswith('/enemy'):
+            # /enemy도 /spawn과 동일하게 작동
+            parts = cmd.split()
+            enemy_type = None
+
+            if len(parts) > 1:
+                enemy_type = parts[1].lower()
+                # 유효한 적 타입 확인
+                valid_types = ['melee', 'ranged', 'sprinter', 'tank', 'bomber']
+                if enemy_type not in valid_types:
+                    self._add_system_message(f"Invalid enemy type: {enemy_type}")
+                    self._add_system_message("Valid types: melee, ranged, sprinter, tank, bomber")
+                    return
+
+            # 적 생성
+            self.game.enemies.spawn_enemy(enemy_type)
+            if enemy_type:
+                self._add_system_message(f"Spawned {enemy_type} enemy")
+            else:
+                self._add_system_message("Spawned random enemy")
 
         else:
             self._add_system_message(f"Unknown command: {command}")
