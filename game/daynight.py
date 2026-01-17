@@ -146,6 +146,11 @@ class DayNightCycle:
             # 밤: 0 강도
             return 0.0
 
+    def is_night(self):
+        """밤 시간인지 확인 (18:00 ~ 06:00)"""
+        # 밤: 0~360분 (0:00~6:00) 또는 1080~1440분 (18:00~24:00)
+        return self.game_time_minutes < 360 or self.game_time_minutes > 1080
+
     def _update_lighting(self):
         """조명 업데이트 (시간에 따른 밝기 변화)"""
         sun_intensity = self._get_sun_intensity()

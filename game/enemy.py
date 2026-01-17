@@ -669,11 +669,13 @@ class EnemySystem:
             # 원거리 적의 투사체 업데이트
             enemy.update_projectiles(dt)
 
-        # 자동 스폰
-        self.spawn_timer += dt
-        if self.spawn_timer >= config['spawn_interval']:
-            self.spawn_timer = 0.0
-            self.spawn_enemy()
+        # 밤에만 자동 스폰
+        is_night = self.game.daynight.is_night()
+        if is_night:
+            self.spawn_timer += dt
+            if self.spawn_timer >= config['spawn_interval']:
+                self.spawn_timer = 0.0
+                self.spawn_enemy()
 
         # 웨이프 타이머
         self.wave_timer += dt
