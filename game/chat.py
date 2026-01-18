@@ -93,6 +93,8 @@ class ChatSystem:
                 "/exit - Exit the game",
                 "/help - Show this help message",
                 "/clear - Clear chat history",
+                "/inv - Show inventory",
+                "/craft [item] - Craft item (ladder, wall, furnace, campfire)",
                 "/target on - Spawn target in front of you",
                 "/target off - Clear all targets",
                 "/spawn [type] - Spawn enemy (melee, ranged, sprinter, tank, bomber)"
@@ -104,6 +106,46 @@ class ChatSystem:
             self.messages.clear()
             self._update_chat_display()
             self._add_system_message("Chat cleared")
+
+        elif cmd == '/inv' or cmd == '/inventory':
+            # 인벤토리 표시
+            wood = self.game.player.get_resource_count('wood')
+            stone = self.game.player.get_resource_count('stone')
+            self._add_system_message(f"Inventory: Wood: {wood}, Stone: {stone}")
+
+        elif cmd.startswith('/craft'):
+            # 조합 커맨드
+            parts = cmd.split()
+
+            if len(parts) < 2:
+                # 레시피 표시
+                recipes = [
+                    "Crafting Recipes:",
+                    "/craft ladder - Ladder (Wood: 10)",
+                    "/craft wall - Wall (Wood: 15, Stone: 5)",
+                    "/craft furnace - Furnace (Stone: 20)",
+                    "/craft campfire - Campfire (Wood: 5, Stone: 3)"
+                ]
+                for line in recipes:
+                    self._add_system_message(line)
+            else:
+                item_type = parts[1].lower()
+                valid_items = ['ladder', 'wall', 'furnace', 'campfire']
+
+                if item_type not in valid_items:
+                    self._add_system_message(f"Unknown item: {item_type}")
+                    self._add_system_message("Valid items: ladder, wall, furnace, campfire")
+                else:
+                    # 조합 시도
+                    if self.game.player.craft_item(item_type):
+                        self._add_system_message(f"Successfully crafted: {item_type}")
+
+                        # 현재 인벤토리도 표시
+                        wood = self.game.player.get_resource_count('wood')
+                        stone = self.game.player.get_resource_count('stone')
+                        self._add_system_message(f"Inventory: Wood: {wood}, Stone: {stone}")
+                    else:
+                        self._add_system_message(f"Failed to craft: {item_type} (not enough resources)")
 
         elif cmd == '/target on':
             self.game.targets.show_targets()

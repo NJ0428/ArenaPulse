@@ -94,6 +94,10 @@ class Controls:
         self.game.accept('raw-o', self._add_obstacle)
         self.game.accept('o', self._add_obstacle)
 
+        # 채집 (E)
+        self.game.accept('raw-e', self._gather_resource)
+        self.game.accept('e', self._gather_resource)
+
     def _setup_mouse(self):
         """마우스 입력 설정"""
         # 좌클릭 다운 - 발사 시작
@@ -156,6 +160,19 @@ class Controls:
         if not self.paused and not self.game.game_over:
             player_pos = self.player.node.getPos()
             self.game.obstacles.add_random_obstacle(player_pos)
+
+    def _gather_resource(self):
+        """리소스 채집"""
+        if not self.paused and not self.game.game_over:
+            player_pos = self.player.node.getPos()
+            resource_type, amount = self.game.resources.try_gather(player_pos)
+
+            if resource_type and amount > 0:
+                # 채집 성공 - 인벤토리에 추가
+                self.player.add_resource(resource_type, amount)
+            elif resource_type:
+                # 채집 중
+                pass
 
     def _toggle_pause(self):
         """일시정지 토글"""
