@@ -32,6 +32,7 @@ from game.sound import SoundManager
 from game.obstacle import ObstacleSystem
 from game.daynight import DayNightCycle
 from game.enemy import EnemySystem
+from game.resources import ResourceSystem
 
 
 class ArenaPulseGame(ShowBase):
@@ -89,6 +90,9 @@ class ArenaPulseGame(ShowBase):
         # 적 시스템 생성
         self.enemies = EnemySystem(self)
 
+        # 리소스 시스템 생성
+        self.resources = ResourceSystem(self)
+
         # 체력과 방어력 UI 생성
         self._create_stats_ui()
 
@@ -104,6 +108,9 @@ class ArenaPulseGame(ShowBase):
         # 웨이브 알림 생성
         self._create_wave_notification()
 
+        # 인벤토리 UI 생성
+        self._create_inventory_ui()
+
         # 게임 오버 화면 생성
         self._create_game_over_screen()
 
@@ -114,7 +121,8 @@ class ArenaPulseGame(ShowBase):
         self.taskMgr.add(self._update_task, "UpdateTask")
 
         print("[Game] ArenaPulse game started! (DOOM style FPS)")
-        print("[Game] WASD: Move | Mouse: Aim | L-Click: Shoot | R-Click: Zoom | Space: Jump | Shift: Sprint | Ctrl: Crouch | R: Reload | ESC: Pause")
+        print("[Game] WASD: Move | Mouse: Aim | L-Click: Shoot | R-Click: Zoom | Space: Jump | Shift: Sprint | Ctrl: Crouch | R: Reload | E: Gather | ESC: Pause")
+        print("[Game] Chat Commands: /inv (inventory), /craft [item], /help")
 
     def _setup_window(self):
         """창 설정"""
@@ -280,12 +288,18 @@ class ArenaPulseGame(ShowBase):
             # 적 시스템 업데이트
             self.enemies.update(dt)
 
+            # 리소스 시스템 업데이트
+            self.resources.update(dt)
+
             # 밤낮 시스템 업데이트 (일시정지 중이 아닐 때만)
             if not self.controls.is_paused():
                 self.daynight.update(dt)
 
             # 총알 UI 업데이트
             self._update_ammo_ui()
+
+            # 인벤토리 UI 업데이트
+            self._update_inventory_ui()
 
             # 체력과 방어력 UI 업데이트
             self._update_stats_ui()
@@ -408,6 +422,35 @@ class ArenaPulseGame(ShowBase):
         )
 
         print("[Game] Stats UI created")
+
+    def _create_inventory_ui(self):
+        """인벤토리 UI 생성"""
+        self.wood_text = OnscreenText(
+            text="Wood: 0",
+            pos=(-0.85, 0.85),
+            scale=0.06,
+            fg=(0.6, 0.4, 0.2, 1),
+            align=TextNode.ALeft,
+            mayChange=True
+        )
+
+        self.stone_text = OnscreenText(
+            text="Stone: 0",
+            pos=(-0.85, 0.80),
+            scale=0.06,
+            fg=(0.5, 0.5, 0.5, 1),
+            align=TextNode.ALeft,
+            mayChange=True
+        )
+
+        print("[Game] Inventory UI created")
+
+    def _update_inventory_ui(self):
+        """인벤토리 UI 업데이트"""
+        wood_count = self.player.get_resource_count('wood')
+        stone_count = self.player.get_resource_count('stone')
+        self.wood_text.setText(f"Wood: {wood_count}")
+        self.stone_text.setText(f"Stone: {stone_count}")
 
     def _create_game_over_screen(self):
         """게임 오버 화면 생성"""
@@ -732,6 +775,7 @@ class ArenaPulseGame(ShowBase):
         self.obstacles.cleanup()
         self.daynight.cleanup()
         self.enemies.cleanup()
+        self.resources.cleanup()
         self.sound.cleanup()
         self.db.close()
         sys.exit()
