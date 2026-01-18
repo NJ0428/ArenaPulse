@@ -88,6 +88,12 @@ class Player:
         self.stamina_regen_delay = 0.5  # 달리기 후 재생 시작 지연 시간
         self.stamina_regen_timer = 0.0  # 재생 타이머
 
+        # 인벤토리 시스템
+        self.inventory = {
+            'wood': 0,    # 나무
+            'stone': 0,   # 돌
+        }
+
     def _create_player_node(self):
         """플레이어 노드 생성 (1인칭이므로 보이지 않음)"""
         self.node = self.game.render.attachNewNode("player")
@@ -496,3 +502,51 @@ class Player:
             proj['node'].removeNode()
         self.projectiles.clear()
         self.node.removeNode()
+
+    def add_resource(self, resource_type, amount):
+        """인벤토리에 리소스 추가"""
+        if resource_type in self.inventory:
+            self.inventory[resource_type] += amount
+            print(f"[Player] {resource_type} +{amount} (총: {self.inventory[resource_type]})")
+            return True
+        return False
+
+    def get_resource_count(self, resource_type):
+        """리소스 개수 반환"""
+        return self.inventory.get(resource_type, 0)
+
+    def use_resources(self, recipe):
+        """조합에 필요한 리소스 사용"""
+        for resource_type, amount in recipe.items():
+            if self.get_resource_count(resource_type) < amount:
+                return False  # 리소스 부족
+
+        # 리소스 소모
+        for resource_type, amount in recipe.items():
+            self.inventory[resource_type] -= amount
+
+        return True
+
+    def craft_item(self, item_type):
+        """아이템 조합"""
+        # 조합 레시피
+        recipes = {
+            'ladder': {'wood': 10},           # 사다리: 나무 10개
+            'wall': {'wood': 15, 'stone': 5}, # 벽: 나무 15개 + 돌 5개
+            'furnace': {'stone': 20},         # 화로: 돌 20개
+            'campfire': {'wood': 5, 'stone': 3}, # 모닥불: 나무 5개 + 돌 3개
+        }
+
+        if item_type not in recipes:
+            print(f"[Player] 알 수 없는 조합 아이템: {item_type}")
+            return False
+
+        recipe = recipes[item_type]
+
+        # 리소스 확인 및 소모
+        if self.use_resources(recipe):
+            print(f"[Player] 조합 성공: {item_type}")
+            return True
+        else:
+            print(f"[Player] 조합 실패: 리소스 부족 ({item_type})")
+            return False
