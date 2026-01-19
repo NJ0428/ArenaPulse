@@ -165,7 +165,11 @@ class ArenaPulseGame(ShowBase):
         self.floor.setPos(0, 0, -0.1)
 
         # 돌 질감 텍스처 로드
-        stone_texture = self.loader.loadTexture("textures/stone.png")
+        try:
+            stone_texture = self.loader.loadTexture("textures/stone.png")
+        except:
+            stone_texture = None
+
         if stone_texture:
             # 텍스처 반복 설정
             stone_texture.setWrapU(Texture.WMRepeat)
@@ -186,7 +190,10 @@ class ArenaPulseGame(ShowBase):
         self.clouds = []
 
         # 구름 텍스처 로드
-        cloud_texture = self.loader.loadTexture("textures/cloud.png")
+        try:
+            cloud_texture = self.loader.loadTexture("textures/cloud.png")
+        except:
+            cloud_texture = None
 
         if cloud_texture:
             # 여러 개의 구름 생성
@@ -329,12 +336,11 @@ class ArenaPulseGame(ShowBase):
                 cloud['node'].setY(cloud['original_y'])
 
     def _update_ammo_ui(self):
-        """총알 UI 업데이트"""
-        current_ammo = self.player.gun_current_ammo
-        magazine_size = self.player.gun_magazine_size
-        total_ammo = self.player.gun_total_ammo
-
-        self.ammo_text.setText(f"{current_ammo} / {magazine_size}  ({total_ammo})")
+        """총알 UI 업데이트 - 현재 무기 정보 표시"""
+        weapon = self.player.current_weapon
+        self.ammo_text.setText(
+            f"{weapon.name}\n{weapon.current_ammo} / {weapon.magazine_size}  ({weapon.total_ammo})"
+        )
 
     def _update_stats_ui(self):
         """체력과 방어력 UI 업데이트"""
@@ -372,22 +378,30 @@ class ArenaPulseGame(ShowBase):
 
     def _create_gun_ui(self):
         """총기 이미지 UI 생성"""
-        # 기본 총기 이미지
-        self.gun_image = OnscreenImage(
-            image='textures/basicGun.png',
-            pos=(0.7, 0, -0.6),
-            scale=(0.5, 1, 0.3)
-        )
-        self.gun_image.setTransparency(TransparencyAttrib.MAlpha)
+        try:
+            # 기본 총기 이미지
+            self.gun_image = OnscreenImage(
+                image='textures/basicGun.png',
+                pos=(0.7, 0, -0.6),
+                scale=(0.5, 1, 0.3)
+            )
+            self.gun_image.setTransparency(TransparencyAttrib.MAlpha)
+        except:
+            self.gun_image = None
+            print("[Game] 텍스처 로드 실패 (textures/basicGun.png)")
 
-        # 줌 상태 총기 이미지 (숨김 상태로 시작)
-        self.gun_zoom_image = OnscreenImage(
-            image='textures/basicGun2.png',
-            pos=(0, 0, -0.4),
-            scale=(0.8, 1, 0.4)
-        )
-        self.gun_zoom_image.setTransparency(TransparencyAttrib.MAlpha)
-        self.gun_zoom_image.hide()
+        try:
+            # 줌 상태 총기 이미지 (숨김 상태로 시작)
+            self.gun_zoom_image = OnscreenImage(
+                image='textures/basicGun2.png',
+                pos=(0, 0, -0.4),
+                scale=(0.8, 1, 0.4)
+            )
+            self.gun_zoom_image.setTransparency(TransparencyAttrib.MAlpha)
+            self.gun_zoom_image.hide()
+        except:
+            self.gun_zoom_image = None
+            print("[Game] 텍스처 로드 실패 (textures/basicGun2.png)")
 
         print("[Game] Gun UI created")
 
@@ -758,12 +772,21 @@ class ArenaPulseGame(ShowBase):
 
     def update_gun_ui(self, is_zoomed):
         """줌 상태에 따른 총기 이미지 변경"""
-        if is_zoomed:
-            self.gun_image.hide()
-            self.gun_zoom_image.show()
-        else:
-            self.gun_image.show()
-            self.gun_zoom_image.hide()
+        if self.gun_image and self.gun_zoom_image:
+            if is_zoomed:
+                self.gun_image.hide()
+                self.gun_zoom_image.show()
+            else:
+                self.gun_image.show()
+                self.gun_zoom_image.hide()
+
+    def update_weapon_ui(self):
+        """무기 전환 시 UI 업데이트"""
+        # 현재 무기의 탄약 정보 즉시 업데이트
+        weapon = self.player.current_weapon
+        self.ammo_text.setText(
+            f"{weapon.name}\n{weapon.current_ammo} / {weapon.magazine_size}  ({weapon.total_ammo})"
+        )
 
     def _exit_game(self):
         """게임 종료"""

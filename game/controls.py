@@ -98,6 +98,12 @@ class Controls:
         self.game.accept('raw-e', self._gather_resource)
         self.game.accept('e', self._gather_resource)
 
+        # 무기 전환 (1-4)
+        self.game.accept('1', self._switch_weapon, [0])
+        self.game.accept('2', self._switch_weapon, [1])
+        self.game.accept('3', self._switch_weapon, [2])
+        self.game.accept('4', self._switch_weapon, [3])
+
     def _setup_mouse(self):
         """마우스 입력 설정"""
         # 좌클릭 다운 - 발사 시작
@@ -173,6 +179,11 @@ class Controls:
             elif resource_type:
                 # 채집 중
                 pass
+
+    def _switch_weapon(self, slot):
+        """무기 전환"""
+        if not self.paused and not self.game.game_over:
+            self.player.switch_weapon(slot)
 
     def _toggle_pause(self):
         """일시정지 토글"""
