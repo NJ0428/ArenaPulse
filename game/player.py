@@ -3,6 +3,7 @@ from direct.actor.Actor import Actor
 from direct.interval.IntervalGlobal import Sequence, Func, Wait
 import math
 import random
+from game.weapon import create_weapon, WEAPON_TYPES
 
 
 class Player:
@@ -44,22 +45,19 @@ class Player:
         self.is_firing = False  # 마우스 버튼 누름 상태 (연발용)
         self.fire_cooldown = 0.0  # 발사 쿨다운 타이머
 
-        # 총기 시스템
-        self.gun_fire_rate = 0.15  # 발사 속도 (초)
-        self.gun_damage = 25  # 데미지
-        self.gun_bullet_speed = 100.0  # 탄속
-        self.gun_spread = 0.5  # 정확도 (낮을수록 정확, 단위: 도)
-        self.gun_recoil = 3.0  # 반동 (상하)
-        self.gun_magazine_size = 30  # 탄창 크기
-        self.gun_current_ammo = self.gun_magazine_size  # 현재 탄창
-        self.gun_total_ammo = 300  # 전체 탄약
-        self.gun_reload_time = 2.0  # 재장전 시간
+        # 무기 시스템
+        self.weapons = {}  # 무기 인벤토리
+        self.current_weapon = None  # 현재 장착 무기
+        self.current_weapon_index = -1  # 현재 무기 인덱스
         self.is_reloading = False  # 재장전 중
-
-        # 줌 시스템
         self.is_zoomed = False  # 줌 상태
-        self.zoom_fov_reduction = 0.5  # 줌 시 FOV 감소 비율
-        self.gun_recoil_zoom_multiplier = 0.4  # 줌 시 반동 감소 비율 (40%만 적용)
+
+        # 초기 무기 장착 (Rifle)
+        self._initialize_weapons()
+
+        # 줌 시스템 (현재 무기 속성 사용)
+        self.zoom_fov_reduction = self.current_weapon.zoom_fov_reduction
+        self.gun_recoil_zoom_multiplier = self.current_weapon.recoil_zoom_multiplier
 
         # 반동 시각효과
         self.recoil_pitch = 0.0  # 현재 반동 각도
@@ -93,6 +91,53 @@ class Player:
             'wood': 0,    # 나무
             'stone': 0,   # 돌
         }
+
+    def _initialize_weapons(self):
+        """무기 초기화 - 모든 무기를 생성하고 Rifle 장착"""
+        # 모든 무기 생성
+        for weapon_type in WEAPON_TYPES:
+            self.weapons[weapon_type] = create_weapon(weapon_type)
+
+        # Rifle 먼저 장착 (기본 무기)
+        self.current_weapon_index = WEAPON_TYPES.index('rifle')
+        self.current_weapon = self.weapons['rifle']
+
+        print(f"[Player] 무기 시스템 초기화 완료 (현재: {self.current_weapon.name})")
+
+    def switch_weapon(self, slot):
+        """
+        무기 전환
+        slot: 0-3 (Pistol, Rifle, Shotgun, Sniper)
+        """
+        if 0 <= slot < len(WEAPON_TYPES):
+            # 재장전 중이면 전환 불가
+            if self.is_reloading:
+                print("[Player] 재장전 중에는 무기를 전환할 수 없습니다.")
+                return
+
+            weapon_type = WEAPON_TYPES[slot]
+
+            # 같은 무기면 무시
+            if self.current_weapon_index == slot:
+                return
+
+            self.current_weapon_index = slot
+            self.current_weapon = self.weapons[weapon_type]
+
+            # 줌 상태 리셋
+            if self.is_zoomed:
+                self.toggle_zoom()
+
+            # 줌 속성 업데이트
+            self.zoom_fov_reduction = self.current_weapon.zoom_fov_reduction
+            self.gun_recoil_zoom_multiplier = self.current_weapon.recoil_zoom_multiplier
+
+            print(f"[Player] 무기 전환: {self.current_weapon.name}")
+
+            # UI 업데이트
+            self.game.update_weapon_ui()
+        else:
+            print(f"[Player] 잘못된 무기 슬롯: {slot}")
 
     def _create_player_node(self):
         """플레이어 노드 생성 (1인칭이므로 보이지 않음)"""
@@ -236,89 +281,44 @@ class Player:
         if self.is_reloading:
             return
 
-        # 탄약 체크
-        if self.gun_current_ammo <= 0:
-            # 빈 탄창 소리 재생
-            self.game.sound.play('empty_click')
-            self._reload()
+        # 발사 가능 여부 체크
+        if not self.current_weapon.can_fire(self.fire_cooldown):
+            # 탄약이 없으면 재장전 시도
+            if self.current_weapon.current_ammo <= 0:
+                self.game.sound.play('empty_click')
+                self._reload()
             return
 
-        # 쿨다운 체크
-        if self.fire_cooldown > 0:
-            return
-
-        self.gun_current_ammo -= 1
-        self.fire_cooldown = self.gun_fire_rate  # 쿨다운 설정
+        self.fire_cooldown = self.current_weapon.fire_rate  # 쿨다운 설정
 
         # 발사 사운드 재생
         self.game.sound.play('gun_shot')
 
-        # 총알 생성 (카드 메이커로 평면 생성)
-        from panda3d.core import CardMaker
-        cm = CardMaker('bullet')
-        cm.setFrame(-0.3, 0.3, -0.15, 0.15)  # 총알 크기
-        bullet = self.game.render.attachNewNode(cm.generate())
-
-        # 항상 카메라를 향하도록 (Billboarding)
-        bullet.setBillboardPointEye()
-
-        # 투명도 설정
-        bullet.setTransparency(TransparencyAttrib.MAlpha)
-
-        # 총알 텍스처 적용
-        bullet_texture = self.game.loader.loadTexture("textures/bullet.png")
-        if bullet_texture:
-            bullet.setTexture(bullet_texture)
-            print("[Player] 총알 텍스처 적용 완료")
-        else:
-            bullet.setColor(1.0, 0.8, 0.0, 1.0)  # 금색 (텍스처 없을 때)
-            print("[Player] 총알 텍스처 로드 실패 - 기본 색상 사용")
-
         # 카메라(눈) 위치에서 발사
         start_pos = self.camera_node.getPos(self.game.render)
-        bullet.setPos(start_pos)
 
-        # 기본 발사 방향 (카메라가 바라보는 방향)
-        heading_rad = math.radians(self.heading)
-        pitch_rad = math.radians(self.pitch)
-
-        base_direction = Vec3(
-            -math.sin(heading_rad) * math.cos(pitch_rad),
-            math.cos(heading_rad) * math.cos(pitch_rad),
-            math.sin(pitch_rad)
+        # 무기 발사 처리
+        result = self.current_weapon.fire(
+            start_pos,
+            self.heading,
+            self.pitch,
+            self.is_zoomed,
+            self.game
         )
-        base_direction.normalize()
 
-        # 산탄(spread) 적용 - 정확도에 따른 랜덤 편차
-        spread_rad = math.radians(self.gun_spread)
-        spread_h = (random.random() - 0.5) * 2 * spread_rad  # 좌우 편차
-        spread_v = (random.random() - 0.5) * 2 * spread_rad  # 상하 편차
-
-        # 편차를 방향에 적용
-        cos_h = math.cos(spread_h)
-        sin_h = math.sin(spread_h)
-        cos_v = math.cos(spread_v)
-        sin_v = math.sin(spread_v)
-
-        direction = Vec3(
-            base_direction.x * cos_h - base_direction.y * sin_h,
-            base_direction.x * sin_h + base_direction.y * cos_h,
-            base_direction.z * cos_v + sin_v
-        )
-        direction.normalize()
-
-        self.projectiles.append({
-            'node': bullet,
-            'direction': direction,
-            'speed': self.gun_bullet_speed,
-            'lifetime': 3.0,
-            'damage': self.gun_damage
-        })
+        # 산탄총인 경우 여러 발 반환
+        if self.current_weapon.weapon_type == 'shotgun':
+            bullets, recoil_amount = result
+            for bullet_data in bullets:
+                self.projectiles.append(bullet_data)
+        else:
+            bullet_data, recoil_amount = result
+            self.projectiles.append(bullet_data)
 
         # 반동 적용
-        self._apply_recoil()
+        self._apply_recoil(recoil_amount)
 
-        print(f"[Player] Shot! Ammo: {self.gun_current_ammo}/{self.gun_magazine_size}")
+        print(f"[Player] Shot! Ammo: {self.current_weapon.get_ammo_display()}")
 
     def start_firing(self):
         """발사 시작 (마우스 버튼 다운)"""
@@ -334,8 +334,8 @@ class Player:
         if self.fire_cooldown > 0:
             self.fire_cooldown -= dt
 
-        # 발사 버튼이 눌려있으면 자동 발사
-        if self.is_firing:
+        # 발사 버튼이 눌려있고 자동 발사 무기면 자동 발사
+        if self.is_firing and self.current_weapon.auto_fire:
             self.ranged_attack()
 
     def toggle_zoom(self):
@@ -346,32 +346,29 @@ class Player:
         lens = self.game.camLens
         if self.is_zoomed:
             # 줌 상태: FOV 감소
-            lens.setFov(lens.getFov() * self.zoom_fov_reduction)
+            lens.setFov(lens.getFov() * self.current_weapon.zoom_fov_reduction)
         else:
             # 일반 상태: FOV 복구
-            lens.setFov(lens.getFov() / self.zoom_fov_reduction)
+            lens.setFov(lens.getFov() / self.current_weapon.zoom_fov_reduction)
 
         # 총기 UI 업데이트
         self.game.update_gun_ui(self.is_zoomed)
 
         print(f"[Player] Zoom {'ON' if self.is_zoomed else 'OFF'}")
 
-    def _apply_recoil(self):
+    def _apply_recoil(self, recoil_amount):
         """반동 적용"""
-        # 줌 상태에서는 반동이 감소
-        recoil_multiplier = self.gun_recoil_zoom_multiplier if self.is_zoomed else 1.0
-
         # 상하 반동
-        recoil_amount = self.gun_recoil * recoil_multiplier * (0.5 + random.random() * 0.5)  # 50%~100% 랜덤
         self.recoil_pitch += recoil_amount
 
         # 카메라에 즉시 적용
         self.camera_node.setP(self.pitch + self.recoil_pitch)
 
         # 조준선 흔들림 효과 (랜덤 방향)
-        recoil_spread = 0.015 * recoil_multiplier  # 조준선 흔들림 크기
-        offset_x = (random.random() - 0.5) * 2 * recoil_spread  # -spread ~ +spread
-        offset_y = (random.random() - 0.5) * 2 * recoil_spread * 0.5  # 상하는 덜 흔들림
+        recoil_multiplier = self.current_weapon.recoil_zoom_multiplier if self.is_zoomed else 1.0
+        recoil_spread = 0.015 * recoil_multiplier * (recoil_amount / 3.0)  # 무기 반동에 비례
+        offset_x = (random.random() - 0.5) * 2 * recoil_spread
+        offset_y = (random.random() - 0.5) * 2 * recoil_spread * 0.5
         self.game.crosshair_offset[0] += offset_x
         self.game.crosshair_offset[1] += offset_y
 
@@ -388,37 +385,29 @@ class Player:
 
     def _reload(self):
         """재장전"""
-        if self.is_reloading or self.gun_total_ammo <= 0:
+        if not self.current_weapon.can_reload(self.is_reloading):
             return
-
-        if self.gun_current_ammo >= self.gun_magazine_size:
-            return  # 이미 탄창이 가득 찼음
 
         self.is_reloading = True
 
-        print(f"[Player] Reloading... ({self.gun_reload_time}s)")
+        print(f"[Player] Reloading... ({self.current_weapon.reload_time}s)")
 
         # 재장전 완료 후 탄약 채우기
         self.game.taskMgr.doMethodLater(
-            self.gun_reload_time,
+            self.current_weapon.reload_time,
             self._finish_reload,
             'reload_weapon'
         )
 
     def _finish_reload(self, task):
         """재장전 완료"""
-        ammo_needed = self.gun_magazine_size - self.gun_current_ammo
-        ammo_to_add = min(ammo_needed, self.gun_total_ammo)
-
-        self.gun_current_ammo += ammo_to_add
-        self.gun_total_ammo -= ammo_to_add
-
+        self.current_weapon.reload()
         self.is_reloading = False
 
         # 재장전 완료 사운드 재생
         self.game.sound.play('gun_reload')
 
-        print(f"[Player] Reloaded! Ammo: {self.gun_current_ammo}/{self.gun_magazine_size}")
+        print(f"[Player] Reloaded! Ammo: {self.current_weapon.get_ammo_display()}")
 
         return None
 
