@@ -122,6 +122,10 @@ class Enemy:
         # 체력바 UI
         self._create_health_bar()
 
+        # 머리 높이 (헤드샷 판정용)
+        self.head_height = self.scale * 0.7  # 몸 크기의 70% 위치
+        self.head_radius = self.scale * 0.25  # 머리 반경
+
         print(f"[Enemy] {enemy_type.upper()} 적 생성 (위치: {position}, 체력: {self.health})")
 
     def _create_enemy_model(self):
@@ -385,10 +389,21 @@ class Enemy:
         # 즉시 사망 처리
         self.die()
 
-    def take_damage(self, damage):
+    def take_damage(self, damage, hit_pos=None):
         """데미지 받기"""
         if self.is_dead:
-            return False
+            return False, False
+
+        # 헤드샷 판정
+        is_headshot = False
+        if hit_pos:
+            enemy_pos = self.node.getPos()
+            # Z축 높이 차이로 머리 판정
+            height_diff = hit_pos.z - enemy_pos.z
+            if abs(height_diff - self.head_height) < self.head_radius:
+                is_headshot = True
+                damage *= 2  # 헤드샷 배율
+                print(f"[Enemy] HEADSHOT! {self.enemy_type} 헤드샷 성공! 데미지 x2")
 
         self.health -= damage
 
@@ -400,10 +415,11 @@ class Enemy:
                 self._explode()
             else:
                 self.die()
-            return True  # 사망
+            return True, is_headshot  # 사망, 헤드샷 여부
 
         # 맞은 효과 (색상 변경)
-        self.node.setColor(1.0, 1.0, 1.0, 1.0)  # 흰색으로 깜빡임
+        headshot_color = (1.0, 1.0, 0.0) if is_headshot else (1.0, 1.0, 1.0)  # 헤드샷이면 노란색
+        self.node.setColor(*headshot_color, 1.0)
 
         # 0.1초 후 원래 색상 복구
         self.game.taskMgr.doMethodLater(
@@ -412,7 +428,7 @@ class Enemy:
             f'restore_color_{id(self)}'
         )
 
-        return False
+        return False, is_headshot
 
     def die(self):
         """사망 처리"""
@@ -616,10 +632,11 @@ class EnemySystem:
 
         print(f"[EnemySystem] 적 스폰 ({enemy_type}, 웨이브 {self.current_wave}, 총 {len(self.enemies)}마리)")
 
-    def check_bullet_collisions(self, bullet_pos):
+    def check_bullet_collisions(self, bullet_pos, bullet_damage=25):
         """
         모든 총알 위치에 대해 적 충돌 체크
         bullet_pos: Point3 - 총알 위치
+        bullet_damage: int - 총알 데미지
         """
         for enemy in self.enemies:
             if enemy.is_dead:
@@ -629,25 +646,31 @@ class EnemySystem:
             distance = (bullet_pos - enemy.node.getPos()).length()
 
             if distance < enemy.scale / 2:
-                # 충돌! 적에게 데미지
-                damage = self.game.player.gun_damage
-                killed = enemy.take_damage(damage)
+                # 충돌! 적에게 데미지 (히트 위치 전달하여 헤드샷 판정)
+                killed, is_headshot = enemy.take_damage(bullet_damage, bullet_pos)
 
-                print(f"[EnemySystem] 적 명중! 데미지: {damage}, 남은 체력: {enemy.health}")
+                headshot_text = " [HEADSHOT!]" if is_headshot else ""
+                print(f"[EnemySystem] 적 명중! 데미지: {bullet_damage}{headshot_text}, 남은 체력: {enemy.health}")
 
-                # 적 사망 시 점수 추가
+                # 적 사망 시 점수 추가 (헤드샷 보너스)
                 if killed:
-                    self.add_score(enemy.enemy_type, enemy.score_value)
+                    score_bonus = enemy.score_value * 2 if is_headshot else enemy.score_value
+                    self.add_score(enemy.enemy_type, int(score_bonus), is_headshot)
 
-                return enemy  # 맞은 적 반환
+                return enemy, is_headshot  # 맞은 적, 헤드샷 여부 반환
 
-        return None
+        return None, False
 
-    def add_score(self, enemy_type, base_score):
+    def add_score(self, enemy_type, base_score, is_headshot=False):
         """적 처치 시 점수 추가"""
         # 웨이브 보너스
         wave_bonus = 1 + (self.current_wave - 1) * 0.2
+
+        # 헤드샷 보너스
         final_score = int(base_score * wave_bonus)
+        if is_headshot:
+            final_score *= 2
+            print(f"[EnemySystem] HEADSHOT KILL! 점수 2배!")
 
         self.total_score += final_score
         self.kill_count += 1

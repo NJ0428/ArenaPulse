@@ -97,7 +97,11 @@ class ChatSystem:
                 "/craft [item] - Craft item (ladder, wall, furnace, campfire)",
                 "/target on - Spawn target in front of you",
                 "/target off - Clear all targets",
-                "/spawn [type] - Spawn enemy (melee, ranged, sprinter, tank, bomber)"
+                "/spawn [type] - Spawn enemy (melee, ranged, sprinter, tank, bomber)",
+                "/weapon - Show current weapon info",
+                "/attach [id] - Install attachment (see /attach list)",
+                "/detach [slot] - Remove attachment (scope/grip/muzzle/magazine)",
+                "/repair - Repair current weapon (cost: Wood 5, Stone 3)"
             ]
             for line in help_text:
                 self._add_system_message(line)
@@ -196,6 +200,67 @@ class ChatSystem:
                 self._add_system_message(f"Spawned {enemy_type} enemy")
             else:
                 self._add_system_message("Spawned random enemy")
+
+        elif cmd == '/weapon' or cmd == '/gun' or cmd == '/w':
+            # 현재 무기 정보 표시
+            info = self.game.player.get_weapon_info()
+            self._add_system_message(f"Weapon: {info['name']}")
+            self._add_system_message(f"  Damage: {info['damage']} | Fire Rate: {info['fire_rate']}s")
+            self._add_system_message(f"  Spread: {info['spread']} | Recoil: {info['recoil']}")
+            self._add_system_message(f"  Magazine: {info['current_ammo']}/{info['magazine_size']} (Total: {info['total_ammo']})")
+            self._add_system_message(f"  Reload Time: {info['reload_time']}s | Mode: {info['fire_mode']}")
+            self._add_system_message(f"  Durability: {info['durability']}% {'[BROKEN]' if info['is_broken'] else ''}")
+            if info['attachments']:
+                self._add_system_message(f"  Attachments: {', '.join(info['attachments'])}")
+            else:
+                self._add_system_message("  Attachments: None")
+
+        elif cmd.startswith('/attach'):
+            # 부착물 장착
+            parts = cmd.split()
+            if len(parts) < 2:
+                # 부착물 목록 표시
+                from game.weapon import Attachment
+                self._add_system_message("Available attachments:")
+                for att_id, att_data in Attachment.ATTACHMENT_TYPES.items():
+                    self._add_system_message(f"  {att_id}: {att_data['name']} - {att_data['description']}")
+            else:
+                attachment_id = parts[1].lower()
+                try:
+                    if self.game.player.install_attachment(attachment_id):
+                        self._add_system_message(f"Installed: {attachment_id}")
+                    # 실패 메시지는 install_attachment 내부에서 처리됨
+                except Exception as e:
+                    self._add_system_message(f"Error: {str(e)}")
+
+        elif cmd.startswith('/detach'):
+            # 부착물 제거
+            parts = cmd.split()
+            if len(parts) < 2:
+                self._add_system_message("Usage: /detach [slot]")
+                self._add_system_message("Slots: scope, grip, muzzle, magazine")
+            else:
+                slot = parts[1].lower()
+                valid_slots = ['scope', 'grip', 'muzzle', 'magazine']
+                if slot not in valid_slots:
+                    self._add_system_message(f"Invalid slot: {slot}")
+                    self._add_system_message(f"Valid slots: {', '.join(valid_slots)}")
+                else:
+                    if self.game.player.remove_attachment(slot):
+                        self._add_system_message(f"Removed attachment from {slot}")
+
+        elif cmd == '/repair':
+            # 무기 수리
+            wood_cost = 5
+            stone_cost = 3
+            if (self.game.player.get_resource_count('wood') >= wood_cost and
+                self.game.player.get_resource_count('stone') >= stone_cost):
+                self.game.player.use_resources({'wood': wood_cost, 'stone': stone_cost})
+                new_durability = self.game.player.repair_weapon()
+                self._add_system_message(f"Weapon repaired! Durability: {new_durability}%")
+                self._add_system_message(f"Cost: Wood -{wood_cost}, Stone -{stone_cost}")
+            else:
+                self._add_system_message(f"Not enough resources! Need: Wood {wood_cost}, Stone {stone_cost}")
 
         else:
             self._add_system_message(f"Unknown command: {command}")
