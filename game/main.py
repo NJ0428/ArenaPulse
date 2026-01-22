@@ -338,8 +338,23 @@ class ArenaPulseGame(ShowBase):
     def _update_ammo_ui(self):
         """총알 UI 업데이트 - 현재 무기 정보 표시"""
         weapon = self.player.current_weapon
+
+        # 내구도 색상 (낮을수록 빨간색)
+        dur_pct = weapon.get_durability_percentage()
+        if dur_pct > 60:
+            dur_color = "(좋음)"
+        elif dur_pct > 30:
+            dur_color = "(주의)"
+        else:
+            dur_color = "(위험)"
+
+        # 무기 고장 상태
+        broken_text = " [BROKEN]" if weapon.broken else ""
+
         self.ammo_text.setText(
-            f"{weapon.name}\n{weapon.current_ammo} / {weapon.magazine_size}  ({weapon.total_ammo})"
+            f"{weapon.name} [{weapon.get_fire_mode_name()}]{broken_text}\n"
+            f"{weapon.current_ammo} / {weapon.magazine_size}  ({weapon.total_ammo})\n"
+            f"내구도: {dur_pct}% {dur_color}"
         )
 
     def _update_stats_ui(self):
