@@ -281,6 +281,12 @@ class Player:
         if self.is_reloading:
             return
 
+        # 무기가 고장났는지 체크
+        if self.current_weapon.broken:
+            self.game.sound.play('empty_click')
+            print("[Player] 무기가 고장났습니다! 수리가 필요합니다.")
+            return
+
         # 발사 가능 여부 체크
         if not self.current_weapon.can_fire(self.fire_cooldown):
             # 탄약이 없으면 재장전 시도
@@ -289,7 +295,7 @@ class Player:
                 self._reload()
             return
 
-        self.fire_cooldown = self.current_weapon.fire_rate  # 쿨다운 설정
+        self.fire_cooldown = self.current_weapon.fire_rate
 
         # 발사 사운드 재생
         self.game.sound.play('gun_shot')
@@ -298,12 +304,16 @@ class Player:
         start_pos = self.camera_node.getPos(self.game.render)
 
         # 무기 발사 처리
+        from game.weapon import FIRE_MODE_BURST
+        is_headshot = False  # TODO: 적 헤드샷 판정 후 구현
+
         result = self.current_weapon.fire(
             start_pos,
             self.heading,
             self.pitch,
             self.is_zoomed,
-            self.game
+            self.game,
+            is_headshot
         )
 
         # 산탄총인 경우 여러 발 반환
@@ -312,31 +322,101 @@ class Player:
             for bullet_data in bullets:
                 self.projectiles.append(bullet_data)
         else:
-            bullet_data, recoil_amount = result
+            bullet_data, recoil_amount, is_crit = result
             self.projectiles.append(bullet_data)
+
+            # 크리티컬 효과
+            if is_crit:
+                print(f"[Player] CRITICAL HIT! {bullet_data['damage']} 데미지!")
 
         # 반동 적용
         self._apply_recoil(recoil_amount)
 
-        print(f"[Player] Shot! Ammo: {self.current_weapon.get_ammo_display()}")
+        print(f"[Player] Shot! Ammo: {self.current_weapon.get_ammo_display()} | Durability: {self.current_weapon.get_durability_percentage()}%")
 
     def start_firing(self):
         """발사 시작 (마우스 버튼 다운)"""
         self.is_firing = True
 
+        # 단발 모드면 즉시 1발만
+        from game.weapon import FIRE_MODE_SEMI
+        if self.current_weapon.current_fire_mode == FIRE_MODE_SEMI:
+            self.ranged_attack()
+
     def stop_firing(self):
         """발사 중지 (마우스 버튼 업)"""
         self.is_firing = False
+        # 점사 카운터 리셋
+        if hasattr(self.current_weapon, 'burst_shots_fired'):
+            self.current_weapon.burst_shots_fired = 0
 
     def _update_firing(self, dt):
         """연발 처리 (매 프레임)"""
+        from game.weapon import FIRE_MODE_AUTO, FIRE_MODE_BURST
+
         # 쿨다운 감소
         if self.fire_cooldown > 0:
             self.fire_cooldown -= dt
 
-        # 발사 버튼이 눌려있고 자동 발사 무기면 자동 발사
-        if self.is_firing and self.current_weapon.auto_fire:
-            self.ranged_attack()
+        # 점사 쿨다운 감소
+        if hasattr(self.current_weapon, 'burst_cooldown') and self.current_weapon.burst_cooldown > 0:
+            self.current_weapon.burst_cooldown -= dt
+
+        # 발사 버튼이 눌려있을 때 처리
+        if self.is_firing:
+            current_mode = self.current_weapon.current_fire_mode
+
+            # 전자동 모드 - 계속 발사
+            if current_mode == FIRE_MODE_AUTO:
+                self.ranged_attack()
+
+            # 점사 모드 - 설정된 발수만큼 발사
+            elif current_mode == FIRE_MODE_BURST:
+                if (self.current_weapon.burst_shots_fired < self.current_weapon.burst_count and
+                    self.current_weapon.burst_cooldown <= 0):
+                    self.ranged_attack()
+                    self.current_weapon.burst_shots_fired += 1
+                    self.current_weapon.burst_cooldown = self.current_weapon.burst_delay
+
+                    # 점사 완료 후 잠시 대기
+                    if self.current_weapon.burst_shots_fired >= self.current_weapon.burst_count:
+                        self.current_weapon.burst_cooldown = 0.5  # 점사 후 딜레이
+
+    def cycle_fire_mode(self):
+        """발사 모드 전환"""
+        new_mode = self.current_weapon.cycle_fire_mode()
+        if new_mode:
+            print(f"[Player] 발사 모드 변경: {self.current_weapon.get_fire_mode_name()}")
+        else:
+            print("[Player] 이 무기는 발사 모드를 변경할 수 없습니다.")
+
+    def install_attachment(self, attachment_id):
+        """부착물 장착"""
+        success = self.current_weapon.install_attachment(attachment_id)
+        if success:
+            # UI 업데이트
+            self.game.update_weapon_ui()
+        return success
+
+    def remove_attachment(self, slot):
+        """부착물 제거"""
+        success = self.current_weapon.remove_attachment(slot)
+        if success:
+            # UI 업데이트
+            self.game.update_weapon_ui()
+        return success
+
+    def repair_weapon(self, amount=None):
+        """무기 수리"""
+        old_durability = self.current_weapon.get_durability_percentage()
+        new_durability = self.current_weapon.repair(amount)
+        print(f"[Player] {self.current_weapon.name} 수리: {old_durability}% -> {new_durability}%")
+        self.game.update_weapon_ui()
+        return new_durability
+
+    def get_weapon_info(self):
+        """현재 무기 정보 반환"""
+        return self.current_weapon.get_full_info()
 
     def toggle_zoom(self):
         """줌 토글"""
@@ -419,6 +499,9 @@ class Player:
                 proj['node'].getPos() + proj['direction'] * proj['speed'] * dt
             )
 
+            # 총알 데미지 가져오기
+            bullet_damage = proj.get('damage', 25)
+
             # 표적 충돌 체크
             hit_target = self.game.targets.check_bullet_collisions(proj['node'].getPos())
             if hit_target:
@@ -427,9 +510,18 @@ class Player:
                 self.projectiles.remove(proj)
                 continue
 
-            # 적 충돌 체크
-            hit_enemy = self.game.enemies.check_bullet_collisions(proj['node'].getPos())
+            # 적 충돌 체크 (데미지 전달)
+            hit_enemy, is_headshot = self.game.enemies.check_bullet_collisions(
+                proj['node'].getPos(), bullet_damage
+            )
             if hit_enemy:
+                # 크리티컬/헤드샷 효과 로그
+                is_crit = proj.get('is_crit', False)
+                if is_crit:
+                    print(f"[Player] CRITICAL HIT on {hit_enemy.enemy_type}!")
+                if is_headshot:
+                    print(f"[Player] HEADSHOT on {hit_enemy.enemy_type}!")
+
                 # 적에 맞으면 총알 제거
                 proj['node'].removeNode()
                 self.projectiles.remove(proj)
