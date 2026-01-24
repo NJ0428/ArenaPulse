@@ -104,6 +104,14 @@ class Controls:
         self.game.accept('3', self._switch_weapon, [2])
         self.game.accept('4', self._switch_weapon, [3])
 
+        # 발사 모드 전환 (V)
+        self.game.accept('raw-v', self._cycle_fire_mode)
+        self.game.accept('v', self._cycle_fire_mode)
+
+        # 무기 수리 (H)
+        self.game.accept('raw-h', self._repair_weapon)
+        self.game.accept('h', self._repair_weapon)
+
     def _setup_mouse(self):
         """마우스 입력 설정"""
         # 좌클릭 다운 - 발사 시작
@@ -184,6 +192,26 @@ class Controls:
         """무기 전환"""
         if not self.paused and not self.game.game_over:
             self.player.switch_weapon(slot)
+
+    def _cycle_fire_mode(self):
+        """발사 모드 전환"""
+        if not self.paused and not self.game.game_over:
+            self.player.cycle_fire_mode()
+
+    def _repair_weapon(self):
+        """무기 수리"""
+        if not self.paused and not self.game.game_over:
+            # 리소스 소모해서 수리
+            wood_cost = 5
+            stone_cost = 3
+
+            if (self.player.get_resource_count('wood') >= wood_cost and
+                self.player.get_resource_count('stone') >= stone_cost):
+                self.player.use_resources({'wood': wood_cost, 'stone': stone_cost})
+                self.player.repair_weapon()
+                print(f"[Player] 무기 수리 완료! (나무 -{wood_cost}, 돌 -{stone_cost})")
+            else:
+                print(f"[Player] 수리에 필요한 리소스 부족! (나무 {wood_cost}, 돌 {stone_cost} 필요)")
 
     def _toggle_pause(self):
         """일시정지 토글"""
