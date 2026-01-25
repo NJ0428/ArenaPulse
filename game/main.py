@@ -33,6 +33,8 @@ from game.obstacle import ObstacleSystem
 from game.daynight import DayNightCycle
 from game.enemy import EnemySystem
 from game.resources import ResourceSystem
+from game.ground_items import GroundItemSystem
+from game.inventory_ui import InventoryUI
 
 
 class ArenaPulseGame(ShowBase):
@@ -93,6 +95,12 @@ class ArenaPulseGame(ShowBase):
         # 리소스 시스템 생성
         self.resources = ResourceSystem(self)
 
+        # 바닥 아이템 시스템 생성
+        self.ground_items = GroundItemSystem(self)
+
+        # 인벤토리 UI 생성
+        self.inventory_ui = InventoryUI(self)
+
         # 체력과 방어력 UI 생성
         self._create_stats_ui()
 
@@ -122,7 +130,8 @@ class ArenaPulseGame(ShowBase):
 
         print("[Game] ArenaPulse game started! (DOOM style FPS)")
         print("[Game] WASD: Move | Mouse: Aim | L-Click: Shoot | R-Click: Zoom | Space: Jump | Shift: Sprint | Ctrl: Crouch | R: Reload | E: Gather | ESC: Pause")
-        print("[Game] Chat Commands: /inv (inventory), /craft [item], /help")
+        print("[Game] I: Inventory | G: Drop Tool | E (near item): Pickup")
+        print("[Game] Chat Commands: /inv (inventory), /tools, /debug_tools, /equip [slot], /drop, /repair_tool, /craft [item], /help")
 
     def _setup_window(self):
         """창 설정"""
@@ -297,6 +306,9 @@ class ArenaPulseGame(ShowBase):
 
             # 리소스 시스템 업데이트
             self.resources.update(dt)
+
+            # 바닥 아이템 시스템 업데이트
+            self.ground_items.update(dt)
 
             # 밤낮 시스템 업데이트 (일시정지 중이 아닐 때만)
             if not self.controls.is_paused():
@@ -814,6 +826,8 @@ class ArenaPulseGame(ShowBase):
         self.daynight.cleanup()
         self.enemies.cleanup()
         self.resources.cleanup()
+        self.ground_items.cleanup()
+        self.inventory_ui.cleanup()
         self.sound.cleanup()
         self.db.close()
         sys.exit()
