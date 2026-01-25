@@ -94,6 +94,7 @@ class ChatSystem:
                 "/help - Show this help message",
                 "/clear - Clear chat history",
                 "/inv - Show inventory",
+                "/tools - Show all tools",
                 "/craft [item] - Craft item (ladder, wall, furnace, campfire)",
                 "/target on - Spawn target in front of you",
                 "/target off - Clear all targets",
@@ -101,7 +102,11 @@ class ChatSystem:
                 "/weapon - Show current weapon info",
                 "/attach [id] - Install attachment (see /attach list)",
                 "/detach [slot] - Remove attachment (scope/grip/muzzle/magazine)",
-                "/repair - Repair current weapon (cost: Wood 5, Stone 3)"
+                "/repair - Repair current weapon (cost: Wood 5, Stone 3)",
+                "/equip [slot] - Equip tool from slot (1-6)",
+                "/drop - Drop current tool",
+                "/repair_tool - Repair current tool (cost: Wood 3, Stone 2)",
+                "/debug_tools - Debug: Give tools for testing"
             ]
             for line in help_text:
                 self._add_system_message(line)
@@ -112,10 +117,89 @@ class ChatSystem:
             self._add_system_message("Chat cleared")
 
         elif cmd == '/inv' or cmd == '/inventory':
-            # 인벤토리 표시
+            # 인벤토리 표시 (리소스 + 도구)
             wood = self.game.player.get_resource_count('wood')
             stone = self.game.player.get_resource_count('stone')
-            self._add_system_message(f"Inventory: Wood: {wood}, Stone: {stone}")
+            self._add_system_message(f"Resources - Wood: {wood}, Stone: {stone}")
+
+            # 도구도 표시
+            tools = self.game.player.get_tool_slots()
+            if tools:
+                self._add_system_message("Tools:")
+                for i, tool in enumerate(tools):
+                    status = f"{tool.get_durability_percentage()}%"
+                    if tool.broken:
+                        status += " [BROKEN]"
+                    equipped = " [EQUIPPED]" if self.game.player.current_tool == tool else ""
+                    self._add_system_message(f"  {i+1}. {tool.name} - Durability: {status}{equipped}")
+            else:
+                self._add_system_message("No tools")
+
+        elif cmd == '/tools':
+            # 모든 도구 표시
+            tools = self.game.player.get_tool_slots()
+            if not tools:
+                self._add_system_message("No tools in inventory")
+            else:
+                self._add_system_message("Tools:")
+                for i, tool in enumerate(tools):
+                    status = f"{tool.get_durability_percentage()}%"
+                    if tool.broken:
+                        status += " [BROKEN]"
+                    equipped = " [EQUIPPED]" if self.game.player.current_tool == tool else ""
+                    self._add_system_message(f"  {i+1}. {tool.name} - Durability: {status}{equipped}")
+
+        elif cmd.startswith('/equip'):
+            # 도구 장착
+            parts = cmd.split()
+            if len(parts) >= 2:
+                try:
+                    slot = int(parts[1]) - 1  # 0-based 인덱스로 변환
+                    if self.game.player.equip_tool(slot):
+                        tool_name = self.game.player.current_tool.name
+                        self._add_system_message(f"Equipped: {tool_name}")
+                    else:
+                        self._add_system_message("Invalid slot or empty/broken tool")
+                except ValueError:
+                    self._add_system_message("Usage: /equip [slot number 1-6]")
+            else:
+                self._add_system_message("Usage: /equip [slot number 1-6]")
+
+        elif cmd == '/debug_tools':
+            # 테스트용: 모든 도구 지급
+            from game.tool import create_tool
+            axe = create_tool('axe')
+            pickaxe = create_tool('pickaxe')
+            if self.game.player.add_tool(axe):
+                self._add_system_message("Debug: Added Axe")
+            if self.game.player.add_tool(pickaxe):
+                self._add_system_message("Debug: Added Pickaxe")
+            self._add_system_message("Debug: Use /equip 1 or /equip 2 to equip tools")
+
+        elif cmd == '/drop':
+            # 현재 도구 드롭
+            if self.game.player.current_tool:
+                tool_name = self.game.player.current_tool.name
+                if self.game.player.drop_current_tool():
+                    self._add_system_message(f"Dropped: {tool_name}")
+            else:
+                self._add_system_message("No tool equipped")
+
+        elif cmd == '/repair_tool':
+            # 도구 수리
+            wood_cost = 3
+            stone_cost = 2
+            if self.game.player.current_tool:
+                if (self.game.player.get_resource_count('wood') >= wood_cost and
+                    self.game.player.get_resource_count('stone') >= stone_cost):
+                    self.game.player.use_resources({'wood': wood_cost, 'stone': stone_cost})
+                    new_durability = self.game.player.current_tool.repair()
+                    self._add_system_message(f"Tool repaired! Durability: {new_durability}%")
+                    self._add_system_message(f"Cost: Wood -{wood_cost}, Stone -{stone_cost}")
+                else:
+                    self._add_system_message(f"Not enough resources! Need: Wood {wood_cost}, Stone {stone_cost}")
+            else:
+                self._add_system_message("No tool equipped to repair")
 
         elif cmd.startswith('/craft'):
             # 조합 커맨드
