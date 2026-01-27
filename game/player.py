@@ -92,6 +92,11 @@ class Player:
             'stone': 0,   # 돌
         }
 
+        # 도구 시스템
+        self.tool_slots = [None] * 6  # 6개 도구 슬롯
+        self.current_tool = None  # 현재 장착 도구
+        self.current_tool_index = -1  # 현재 도구 인덱스
+
     def _initialize_weapons(self):
         """무기 초기화 - 모든 무기를 생성하고 Rifle 장착"""
         # 모든 무기 생성
@@ -631,3 +636,109 @@ class Player:
         else:
             print(f"[Player] 조합 실패: 리소스 부족 ({item_type})")
             return False
+
+    # ===== 도구 시스템 =====
+
+    def add_tool(self, tool):
+        """도구를 첫 번째 빈 슬롯에 추가"""
+        for i in range(len(self.tool_slots)):
+            if self.tool_slots[i] is None:
+                self.tool_slots[i] = tool
+                print(f"[Player] 도구 추가: {tool.name} -> 슬롯 {i}")
+                return True
+        print("[Player] 인벤토리가 가득 찼습니다!")
+        return False
+
+    def get_tool_at_slot(self, slot_index):
+        """특정 슬롯의 도구 반환"""
+        if 0 <= slot_index < len(self.tool_slots):
+            return self.tool_slots[slot_index]
+        return None
+
+    def equip_tool(self, slot_index):
+        """슬롯에서 도구 장착"""
+        tool = self.get_tool_at_slot(slot_index)
+        if tool and not tool.broken:
+            self.current_tool = tool
+            self.current_tool_index = slot_index
+            print(f"[Player] 도구 장착: {tool.name}")
+            return True
+        elif tool and tool.broken:
+            print("[Player] 고장난 도구는 장착할 수 없습니다!")
+            return False
+        print(f"[Player] 슬롯 {slot_index}가 비어있거나 잘못되었습니다.")
+        return False
+
+    def drop_current_tool(self):
+        """현재 장착한 도구 드롭"""
+        if self.current_tool:
+            player_pos = self.node.getPos()
+
+            # 플레이어 앞쪽에 드롭
+            import math
+            heading_rad = math.radians(self.heading)
+            drop_pos = player_pos + Vec3(
+                -math.sin(heading_rad) * 2,
+                math.cos(heading_rad) * 2,
+                0
+            )
+
+            # 바닥 아이템 생성
+            self.game.ground_items.drop_item(
+                drop_pos,
+                'tool',
+                self.current_tool
+            )
+
+            # 인벤토리에서 제거
+            self.tool_slots[self.current_tool_index] = None
+            self.current_tool = None
+            self.current_tool_index = -1
+
+            print("[Player] 도구 드롭 완료!")
+            return True
+        print("[Player] 드롭할 도구가 없습니다.")
+        return False
+
+    def get_tool_slots(self):
+        """모든 도구 슬롯 반환"""
+        return [t for t in self.tool_slots if t is not None]
+
+    def use_current_tool(self, resource_type):
+        """현재 도구 사용 (채광)"""
+        if self.current_tool and not self.current_tool.broken:
+            success = self.current_tool.use()
+            if success:
+                bonus = self.current_tool.get_gather_bonus(resource_type)
+                return bonus
+            else:
+                print("[Player] 도구가 고장났습니다!")
+        return {'speed': 1.0, 'amount': 1.0}
+
+    def repair_current_tool(self):
+        """현재 도구 수리 (리소스 사용)"""
+        if self.current_tool:
+            wood_cost = 3
+            stone_cost = 2
+
+            if (self.get_resource_count('wood') >= wood_cost and
+                self.get_resource_count('stone') >= stone_cost):
+                self.use_resources({'wood': wood_cost, 'stone': stone_cost})
+                old_durability = self.current_tool.get_durability_percentage()
+                new_durability = self.current_tool.repair()
+                print(f"[Player] 도구 수리: {old_durability}% -> {new_durability}%")
+                return True
+            else:
+                print("[Player] 도구 수리에 리소스가 부족합니다!")
+        else:
+            print("[Player] 수리할 도구가 없습니다.")
+        return False
+
+    def unequip_current_tool(self):
+        """현재 도구 장착 해제"""
+        if self.current_tool:
+            print(f"[Player] 도구 장착 해제: {self.current_tool.name}")
+            self.current_tool = None
+            self.current_tool_index = -1
+            return True
+        return False
