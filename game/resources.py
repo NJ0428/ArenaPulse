@@ -267,7 +267,7 @@ class ResourceSystem:
         )
 
     def try_gather(self, player_pos):
-        """채집 시도"""
+        """채집 시도 (도구 보너스 적용)"""
         if self.gather_cooldown > 0:
             return None, None
 
@@ -283,15 +283,36 @@ class ResourceSystem:
 
         # 사정거리 내에 있는지 확인
         if closest_resource and closest_distance <= self.gather_range:
-            # 채집 실행
-            gathered = closest_resource.gather()
-            self.gather_cooldown = self.gather_cooldown_time
+            # 도구 보너스 적용
+            speed_bonus = 1.0
+            amount_bonus = 1.0
 
-            if gathered > 0:
+            current_tool = self.game.player.current_tool
+            if current_tool and not current_tool.broken:
+                bonuses = current_tool.get_gather_bonus(closest_resource.resource_type)
+                speed_bonus = bonuses['speed']
+                amount_bonus = bonuses['amount']
+
+            # 채집 양 계산 (보너스 적용)
+            base_gather = closest_resource.gather_amount
+            gathered_amount = int(base_gather * amount_bonus)
+
+            # 채집 실행
+            actual_gathered = closest_resource.gather(gathered_amount)
+
+            # 도구 내구도 사용 (실제로 채집했을 때만)
+            if current_tool and actual_gathered > 0:
+                current_tool.use()
+
+            # 쿨다운 적용 (속도 보너스로 감소)
+            self.gather_cooldown = self.gather_cooldown_time / speed_bonus
+
+            if actual_gathered > 0:
                 # 채집 완료
                 resource_type = closest_resource.resource_type
-                print(f"[Resource] 채집 완료: {resource_type} +{gathered}")
-                return resource_type, gathered
+                bonus_text = f" (x{amount_bonus:.1f} bonus!)" if amount_bonus > 1.0 else ""
+                print(f"[Resource] 채집 완료: {resource_type} +{actual_gathered}{bonus_text}")
+                return resource_type, actual_gathered
             else:
                 # 채집 중
                 resource_type = closest_resource.resource_type
