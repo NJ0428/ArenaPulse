@@ -112,6 +112,14 @@ class Controls:
         self.game.accept('raw-h', self._repair_weapon)
         self.game.accept('h', self._repair_weapon)
 
+        # 인벤토리 UI (I)
+        self.game.accept('raw-i', self._toggle_inventory)
+        self.game.accept('i', self._toggle_inventory)
+
+        # 도구 드롭 (G)
+        self.game.accept('raw-g', self._drop_tool)
+        self.game.accept('g', self._drop_tool)
+
     def _setup_mouse(self):
         """마우스 입력 설정"""
         # 좌클릭 다운 - 발사 시작
@@ -176,17 +184,43 @@ class Controls:
             self.game.obstacles.add_random_obstacle(player_pos)
 
     def _gather_resource(self):
-        """리소스 채집"""
+        """리소스 채집 또는 도구 줍기"""
         if not self.paused and not self.game.game_over:
             player_pos = self.player.node.getPos()
-            resource_type, amount = self.game.resources.try_gather(player_pos)
 
-            if resource_type and amount > 0:
-                # 채집 성공 - 인벤토리에 추가
-                self.player.add_resource(resource_type, amount)
-            elif resource_type:
-                # 채집 중
-                pass
+            # 먼저 도구 줍기 시도
+            item_type, item_data = self.game.ground_items.try_pickup(player_pos)
+
+            if item_type == 'tool':
+                # 도구를 줍음
+                self.player.add_tool(item_data)
+                print("[Player] Picked up tool!")
+            elif item_type == 'resource':
+                # 리소스를 줍음
+                res_type = item_data['type']
+                amount = item_data['amount']
+                self.player.add_resource(res_type, amount)
+                print(f"[Player] Picked up {res_type} +{amount}")
+            else:
+                # 줍을 아이템이 없으면 리소스 채집
+                resource_type, amount = self.game.resources.try_gather(player_pos)
+
+                if resource_type and amount > 0:
+                    # 채집 성공 - 인벤토리에 추가
+                    self.player.add_resource(resource_type, amount)
+                elif resource_type:
+                    # 채집 중
+                    pass
+
+    def _toggle_inventory(self):
+        """인벤토리 UI 토글"""
+        if not self.paused and not self.game.game_over:
+            self.game.inventory_ui.toggle()
+
+    def _drop_tool(self):
+        """현재 도구 드롭"""
+        if not self.paused and not self.game.game_over:
+            self.player.drop_current_tool()
 
     def _switch_weapon(self, slot):
         """무기 전환"""
