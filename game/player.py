@@ -86,6 +86,13 @@ class Player:
         self.stamina_regen_delay = 0.5  # 달리기 후 재생 시작 지연 시간
         self.stamina_regen_timer = 0.0  # 재생 타이머
 
+        # 포만함 시스템
+        self.hunger = 100.0  # 현재 포만함
+        self.max_hunger = 100.0  # 최대 포만함
+        self.hunger_drain_rate = 2.0  # 포만함 소모율 (초당)
+        self.hunger_damage_threshold = 20.0  # 포만함이 이 값 아래로 떨어지면 체력 감소
+        self.hunger_damage_rate = 5.0  # 포만함 부족 시 체력 감소율 (초당)
+
         # 인벤토리 시스템
         self.inventory = {
             'wood': 0,    # 나무
@@ -167,6 +174,7 @@ class Player:
         self._update_gravity(dt)
         self._update_movement(dt)
         self._update_stamina(dt)  # 스태미나 업데이트
+        self._update_hunger(dt)  # 포만함 업데이트
         self._update_crouch_height(dt)  # 숨쉬기 높이 업데이트
         self._update_projectiles(dt)
         self._update_recoil(dt)  # 반동 복구
@@ -568,6 +576,19 @@ class Player:
                 if self.stamina > self.max_stamina:
                     self.stamina = self.max_stamina
 
+    def _update_hunger(self, dt):
+        """포만함 업데이트"""
+        # 포만함 지속적으로 감소
+        self.hunger -= self.hunger_drain_rate * dt
+        if self.hunger < 0:
+            self.hunger = 0
+
+        # 포만함이 부족하면 체력 감소
+        if self.hunger < self.hunger_damage_threshold:
+            self.health -= self.hunger_damage_rate * dt
+            if self.health < 0:
+                self.health = 0
+
     def _update_crouch_height(self, dt):
         """숨쉬기 높이 업데이트 (부드러운 전환)"""
         target_height = self.crouch_eye_height if self.is_crouching else self.eye_height
@@ -742,3 +763,30 @@ class Player:
             self.current_tool_index = -1
             return True
         return False
+
+    # ===== 음식/포만함 시스템 =====
+
+    def eat_food(self, food_type):
+        """음식 섭취"""
+        food_values = {
+            'meat': {'hunger': 30, 'health': 10},
+            'berry': {'hunger': 10, 'health': 0},
+            'cooked_meat': {'hunger': 50, 'health': 20},
+        }
+
+        if food_type not in food_values:
+            print(f"[Player] 알 수 없는 음식: {food_type}")
+            return False
+
+        values = food_values[food_type]
+
+        # 포만함 회복
+        old_hunger = int(self.hunger)
+        self.hunger = min(self.max_hunger, self.hunger + values['hunger'])
+
+        # 체력 회복
+        old_health = int(self.health)
+        self.health = min(self.max_health, self.health + values['health'])
+
+        print(f"[Player] {food_type} 섭취: 포만함 {old_hunger}->{int(self.hunger)}, 체력 {old_health}->{int(self.health)}")
+        return True
